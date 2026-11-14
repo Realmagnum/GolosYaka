@@ -48,21 +48,15 @@ struct TextFormatter {
             var parts: [String] = []
             var end = index
             while end < tokens.count {
-                let candidate = normalizedNumberToken(tokens[end]).word
-                guard allWords.contains(candidate) else { break }
-                parts.append(candidate)
+                let candidate = normalizedNumberToken(tokens[end])
+                guard allWords.contains(candidate.word) else { break }
+                if end > index && !candidate.prefix.isEmpty { break }
+                parts.append(candidate.word)
                 end += 1
+                if !candidate.suffix.isEmpty { break }
             }
 
-            // Don't concatenate independent number phrases split by punctuation.
-            var numberEnd = end
-            if end < tokens.count {
-                let lastToken = normalizedNumberToken(tokens[end - 1])
-                if !lastToken.suffix.isEmpty, lastToken.suffix.allSatisfy({ $0.isPunctuation }) {
-                    numberEnd -= 1
-                    parts.removeLast()
-                }
-            }
+            let numberEnd = end
 
             let value = parseRussianNumber(parts)
             // Preserve a standalone zero and avoid transforming malformed or
