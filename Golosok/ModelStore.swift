@@ -101,6 +101,29 @@ extension RecognitionModel {
     )
 }
 
+enum ModelDownloadStatus: Equatable {
+    case idle
+    case connecting
+    case progress(writtenMB: Double, totalMB: Double, percent: Int)
+    case ready
+    case failed
+
+    var localized: String {
+        switch self {
+        case .idle:
+            return ""
+        case .connecting:
+            return L10n.tr("DownloadStatus.Connecting")
+        case .progress(let written, let total, let percent):
+            return L10n.format("%.0f / %.0f МБ (%d%%)", written, total, percent)
+        case .ready:
+            return L10n.tr("DownloadStatus.Ready")
+        case .failed:
+            return L10n.tr("DownloadStatus.Failed")
+        }
+    }
+}
+
 final class ModelStore: NSObject, ObservableObject {
     static let shared = ModelStore()
 
@@ -119,7 +142,7 @@ final class ModelStore: NSObject, ObservableObject {
 
     @Published var downloadingID: String?
     @Published var downloadProgress: Double = 0
-    @Published var downloadStatus = ""
+    @Published var downloadStatusState: ModelDownloadStatus = .idle
     @Published var downloadFailed = false
 
     private var session: URLSession?
@@ -161,8 +184,13 @@ final class ModelStore: NSObject, ObservableObject {
 
         guard !cleanName.isEmpty, !cleanEndpoint.isEmpty else { return }
 
+        let id = "custom_" + UUID().uuidString.prefix(8)
+        if let cleanKey, !cleanKey.isEmpty {
+            KeyStore.set(cleanKey, for: "asr.custom.\(id).apiKey")
+        }
+
         let model = RecognitionModel(
-            id: "custom_" + UUID().uuidString.prefix(8),
+            id: id,
             name: cleanName,
             systemName: cleanModelId.isEmpty ? cleanName : cleanModelId,
             languageCode: "ru",
@@ -173,7 +201,7 @@ final class ModelStore: NSObject, ObservableObject {
             inferenceType: .remoteOpenAI,
             endpointURL: cleanEndpoint,
             modelIdentifier: cleanModelId,
-            apiKey: (cleanKey?.isEmpty == false) ? cleanKey : nil,
+            apiKey: nil,
             isCustom: true
         )
         customModels.append(model)
@@ -183,6 +211,7 @@ final class ModelStore: NSObject, ObservableObject {
 
     func removeCustomModel(id: String) {
         customModels.removeAll { $0.id == id }
+        KeyStore.delete("asr.custom.\(id).apiKey")
         if activeModelID == id {
             activeModelID = RecognitionModel.russianGigaAM.id
         }
@@ -191,16 +220,32 @@ final class ModelStore: NSObject, ObservableObject {
     }
 
     private func persistCustomModels() {
+        let sanitized = customModels.map { m -> RecognitionModel in
+            var copy = m
+            copy.apiKey = nil
+            return copy
+        }
         guard let url = customModelsFileURL,
-              let data = try? JSONEncoder().encode(customModels) else { return }
+              let data = try? JSONEncoder().encode(sanitized) else { return }
         try? data.write(to: url, options: .atomic)
     }
 
     private func loadCustomModels() {
         guard let url = customModelsFileURL,
               let data = try? Data(contentsOf: url),
-              let list = try? JSONDecoder().decode([RecognitionModel].self, from: data) else { return }
+              var list = try? JSONDecoder().decode([RecognitionModel].self, from: data) else { return }
+        var migrated = false
+        for i in list.indices {
+            if let legacyKey = list[i].apiKey?.trimmingCharacters(in: .whitespacesAndNewlines), !legacyKey.isEmpty {
+                KeyStore.set(legacyKey, for: "asr.custom.\(list[i].id).apiKey")
+                list[i].apiKey = nil
+                migrated = true
+            }
+        }
         customModels = list
+        if migrated {
+            persistCustomModels()
+        }
     }
 
     private var modelsDir: URL {
@@ -226,7 +271,7 @@ final class ModelStore: NSObject, ObservableObject {
     func download(_ id: String) {
         guard let model = model(named: id), let url = model.downloadURL, !isDownloaded(id) else { return }
         downloadFailed = false
-        downloadStatus = "DownloadStatus.Connecting"
+        downloadStatusState = .connecting
         downloadingID = id
         downloadProgress = 0
         AppLogger.shared.info("Models", "Начало скачивания модели", details: "\(id) — \(sizeMB(for: model))")
@@ -241,7 +286,7 @@ final class ModelStore: NSObject, ObservableObject {
         task?.cancel()
         task = nil
         downloadingID = nil
-        downloadStatus = ""
+        downloadStatusState = .idle
     }
 
     func remove(_ id: String) {
@@ -261,14 +306,14 @@ extension ModelStore: URLSessionDownloadDelegate {
             let mbW = Double(totalBytesWritten) / (1024.0 * 1024.0)
             let mbT = Double(totalBytesExpectedToWrite) / (1024.0 * 1024.0)
             let pct = Int(self.downloadProgress * 100.0)
-            self.downloadStatus = String(format: "%.0f / %.0f МБ (%d%%)", mbW, mbT, pct)
+            self.downloadStatusState = .progress(writtenMB: mbW, totalMB: mbT, percent: pct)
         }
     }
 
     func urlSession(_ session: URLSession, downloadTask: URLSessionDownloadTask, didFinishDownloadingTo location: URL) {
         let id = downloadingID
         guard let id, let model = self.model(named: id), !model.isBundled else {
-            DispatchQueue.main.async { self.downloadingID = nil; self.downloadStatus = "" }
+            DispatchQueue.main.async { self.downloadingID = nil; self.downloadStatusState = .idle }
             return
         }
         do {
@@ -280,14 +325,14 @@ extension ModelStore: URLSessionDownloadDelegate {
             Telemetry.shared.event("model_download_done", ["model_id": id, "model_size_mb": model.sizeMB])
             DispatchQueue.main.async {
                 self.downloadingID = nil
-                self.downloadStatus = "DownloadStatus.Ready"
+                self.downloadStatusState = .ready
             }
         } catch {
             AppLogger.shared.error("Models", "Ошибка сохранения модели", details: "\(id): \(error.localizedDescription)")
             Telemetry.shared.event("model_download_failed", ["model_id": id, "error_stage": "move", "error_detail": String(describing: error)])
             DispatchQueue.main.async {
                 self.downloadingID = nil
-                self.downloadStatus = "DownloadStatus.Failed"
+                self.downloadStatusState = .failed
                 self.downloadFailed = true
             }
         }
@@ -300,7 +345,7 @@ extension ModelStore: URLSessionDownloadDelegate {
         Telemetry.shared.event("model_download_failed", ["model_id": id ?? "?", "error_stage": "network", "error_detail": error?.localizedDescription ?? ""])
         DispatchQueue.main.async {
             self.downloadingID = nil
-            self.downloadStatus = "DownloadStatus.Failed"
+            self.downloadStatusState = .failed
             self.downloadFailed = true
         }
     }
