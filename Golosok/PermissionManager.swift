@@ -46,10 +46,29 @@ class PermissionManager: ObservableObject {
     }
     
     func requestMicPermission() {
-        AVCaptureDevice.requestAccess(for: .audio) { granted in
-            DispatchQueue.main.async {
-                self.isMicGranted = granted
+        switch AVCaptureDevice.authorizationStatus(for: .audio) {
+        case .authorized:
+            isMicGranted = true
+        case .notDetermined:
+            AVCaptureDevice.requestAccess(for: .audio) { granted in
+                DispatchQueue.main.async {
+                    self.isMicGranted = granted
+                    self.checkPermissions()
+                }
             }
+        case .denied, .restricted:
+            // macOS не показывает повторный запрос после отказа — ведём пользователя
+            // напрямую в системный раздел «Микрофон».
+            AppLogger.shared.warn("Permissions", "Доступ к микрофону запрещён", details: "Открываю системные настройки")
+            openMicrophoneSettings()
+        @unknown default:
+            break
+        }
+    }
+
+    func openMicrophoneSettings() {
+        if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Microphone") {
+            NSWorkspace.shared.open(url)
         }
     }
     
