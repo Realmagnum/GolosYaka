@@ -24,6 +24,7 @@ enum TechTermSortOption: String, CaseIterable, Identifiable {
 
 struct TechTermManagerView: View {
     @ObservedObject private var store = TechTermStore.shared
+    @ObservedObject private var language = LanguageSettings.shared
     @Environment(\.dismiss) private var dismiss
 
     @State private var searchText = ""
@@ -88,13 +89,13 @@ struct TechTermManagerView: View {
         .frame(minWidth: 560, idealWidth: 620, minHeight: 520, idealHeight: 640)
         .background(Color.uiPaper)
         .sheet(item: $editingRule) { rule in
-            TechTermEditorView(rule: rule)
+            TechTermEditorView(rule: rule).withAppLocale()
         }
         .sheet(isPresented: $creatingRule) {
-            TechTermEditorView(rule: nil)
+            TechTermEditorView(rule: nil).withAppLocale()
         }
         .sheet(isPresented: $showingCandidatesSheet) {
-            TechTermCandidatesView()
+            TechTermCandidatesView().withAppLocale()
         }
         .alert("Сбросить к базовому словарю?", isPresented: $showingResetAlert) {
             Button("Отмена", role: .cancel) { }
@@ -147,7 +148,7 @@ struct TechTermManagerView: View {
                         sortOption = opt
                     } label: {
                         HStack {
-                            Text(opt.rawValue)
+                            Text(LocalizedStringKey(opt.rawValue))
                             if sortOption == opt {
                                 Image(systemName: "checkmark")
                             }
@@ -158,7 +159,7 @@ struct TechTermManagerView: View {
                 HStack(spacing: 5) {
                     Image(systemName: "arrow.up.arrow.down")
                         .font(.system(size: 11, weight: .medium))
-                    Text(sortOption.rawValue)
+                    Text(LocalizedStringKey(sortOption.rawValue))
                         .font(UIStyleFont.body(size: 11, weight: .medium))
                         .lineLimit(1)
                 }
@@ -212,7 +213,7 @@ struct TechTermManagerView: View {
                                     Circle()
                                         .fill(Color.uiWarn)
                                         .frame(width: 5, height: 5)
-                                    Text(String(format: String(localized: "%lld на проверке"), Int64(store.candidates.count)))
+                                    Text(L10n.format("%lld на проверке", Int64(store.candidates.count)))
                                         .font(UIStyleFont.body(size: 10, weight: .semibold))
                                         .foregroundColor(.uiWarn)
                                 }
@@ -231,7 +232,7 @@ struct TechTermManagerView: View {
 
             // Нижняя строка: счетчик и кнопки импорта/экспорта
             HStack(spacing: 8) {
-                Text(String(format: String(localized: "Показано: %lld из %lld"), Int64(displayedRules.count), Int64(store.rules.count)))
+                Text(L10n.format("Показано: %lld из %lld", Int64(displayedRules.count), Int64(store.rules.count)))
                     .font(UIStyleFont.mono(size: 11))
                     .foregroundColor(.uiMidGray)
 
@@ -383,7 +384,7 @@ struct TechTermManagerView: View {
             Spacer()
 
             if !store.candidates.isEmpty {
-                UIOutlineButton(title: LocalizedStringKey(String(format: String(localized: "Кандидаты ИИ (%lld)"), Int64(store.candidates.count)))) {
+                UIOutlineButton(title: LocalizedStringKey(L10n.format("Кандидаты ИИ (%lld)", Int64(store.candidates.count)))) {
                     showingCandidatesSheet = true
                 }
             }
@@ -399,7 +400,7 @@ struct TechTermManagerView: View {
 
     private func importDictionary() {
         let panel = NSOpenPanel()
-        panel.title = "Импорт словаря терминов"
+        panel.title = L10n.tr("Импорт словаря терминов")
         panel.canChooseFiles = true
         panel.canChooseDirectories = false
         panel.allowsMultipleSelection = false
@@ -410,9 +411,9 @@ struct TechTermManagerView: View {
         if panel.runModal() == .OK, let url = panel.url {
             let res = store.importFromURL(url)
             if let err = res.error {
-                importResultMessage = "Ошибка: \(err)"
+                importResultMessage = L10n.format("Ошибка: %@", err)
             } else {
-                importResultMessage = "Успешно импортировано \(res.imported) терминов."
+                importResultMessage = L10n.format("Успешно импортировано %lld терминов.", Int64(res.imported))
             }
             showingImportAlert = true
         }
@@ -420,7 +421,7 @@ struct TechTermManagerView: View {
 
     private func exportDictionary() {
         let panel = NSSavePanel()
-        panel.title = "Экспорт словаря терминов"
+        panel.title = L10n.tr("Экспорт словаря терминов")
         panel.nameFieldStringValue = "golosok_terms_dictionary.json"
         if let jsonType = UTType(filenameExtension: "json") {
             panel.allowedContentTypes = [jsonType]
@@ -522,6 +523,8 @@ struct TechTermEditorView: View {
 struct TechTermCandidatesView: View {
     @Environment(\.dismiss) private var dismiss
     @ObservedObject private var store = TechTermStore.shared
+    @ObservedObject private var language = LanguageSettings.shared
+    @State private var editingCandidate: TechTermCandidate?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -572,13 +575,24 @@ struct TechTermCandidatesView: View {
                                         .font(UIStyleFont.mono(size: 12))
                                         .foregroundColor(Color(hex: "#10B981"))
                                 }
-                                Text(String(format: String(localized: "Встретилось раз: %lld • %@"), Int64(c.occurrences), timeAgo(c.lastSeen)))
+                                Text(L10n.format("Встретилось раз: %lld • %@", Int64(c.occurrences), timeAgo(c.lastSeen)))
                                     .font(UIStyleFont.body(size: 10))
                                     .foregroundColor(.uiMidGray)
                             }
                             Spacer()
 
                             HStack(spacing: 6) {
+                                Button(action: { editingCandidate = c }) {
+                                    Image(systemName: "pencil")
+                                        .font(.system(size: 11, weight: .bold))
+                                        .foregroundColor(.uiMidGray)
+                                        .frame(width: 26, height: 26)
+                                        .background(Color.uiSidebar)
+                                        .cornerRadius(6)
+                                }
+                                .buttonStyle(PlainButtonStyle())
+                                .help("Редактировать кандидата")
+
                                 Button(action: { store.approveCandidate(c) }) {
                                     Image(systemName: "checkmark")
                                         .font(.system(size: 11, weight: .bold))
@@ -615,8 +629,13 @@ struct TechTermCandidatesView: View {
                     UIOutlineButton(title: "Очистить всё") {
                         store.clearCandidates()
                     }
-                    UIOutlineButton(title: "Проверить через ИИ сейчас") {
+                    UIOutlineButton(title: store.isVerifyingCandidates ? "Проверяю…" : "Проверить через ИИ сейчас") {
                         store.triggerBatchVerificationIfNeeded(force: true)
+                    }
+                    .disabled(store.isVerifyingCandidates)
+
+                    if store.isVerifyingCandidates {
+                        ProgressView().controlSize(.small)
                     }
                 }
 
@@ -626,15 +645,99 @@ struct TechTermCandidatesView: View {
                     dismiss()
                 }
             }
+
+            if let message = store.candidateVerificationMessage {
+                Text(message.localized)
+                    .font(UIStyleFont.body(size: 11, weight: .regular))
+                    .foregroundColor(store.candidateVerificationIsError ? .uiEmber : .uiMidGray)
+                    .lineSpacing(2)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
         }
         .padding(24)
         .frame(width: 520)
         .background(Color.uiPaper)
+        .sheet(item: $editingCandidate) { candidate in
+            TechTermCandidateEditorView(candidate: candidate).withAppLocale()
+        }
     }
 
     private func timeAgo(_ date: Date) -> String {
         let formatter = RelativeDateTimeFormatter()
         formatter.unitsStyle = .short
+        formatter.locale = language.locale
         return formatter.localizedString(for: date, relativeTo: Date())
+    }
+}
+
+
+// MARK: - Редактор кандидата автообучения
+
+struct TechTermCandidateEditorView: View {
+    @Environment(\.dismiss) private var dismiss
+    @ObservedObject private var store = TechTermStore.shared
+
+    private let original: TechTermCandidate
+    @State private var canonical: String
+    @State private var pattern: String
+
+    init(candidate: TechTermCandidate) {
+        self.original = candidate
+        _canonical = State(initialValue: candidate.canonical)
+        _pattern = State(initialValue: candidate.pattern)
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("Редактировать кандидата")
+                .font(UIStyleFont.display(size: 15, weight: .bold))
+                .foregroundColor(.uiInk)
+
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Правильный термин")
+                    .font(UIStyleFont.body(size: 12, weight: .medium))
+                    .foregroundColor(.uiMidGray)
+                TextField("например: IP-провайдерами", text: $canonical)
+                    .textFieldStyle(.plain)
+                    .padding(8)
+                    .background(Color.uiSidebar)
+                    .cornerRadius(8)
+                    .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.uiHairline, lineWidth: 1))
+            }
+
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Вариант, который распознала модель")
+                    .font(UIStyleFont.body(size: 12, weight: .medium))
+                    .foregroundColor(.uiMidGray)
+                TextField("например: ай-пи провайдерами", text: $pattern)
+                    .textFieldStyle(.plain)
+                    .padding(8)
+                    .background(Color.uiSidebar)
+                    .cornerRadius(8)
+                    .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.uiHairline, lineWidth: 1))
+            }
+
+            HStack {
+                Spacer()
+                UIOutlineButton(title: "Отмена") {
+                    dismiss()
+                }
+                UIPrimaryButton(title: "Сохранить") {
+                    var updated = original
+                    updated.canonical = canonical.trimmingCharacters(in: .whitespacesAndNewlines)
+                    updated.pattern = pattern.trimmingCharacters(in: .whitespacesAndNewlines)
+                    store.updateCandidate(updated)
+                    dismiss()
+                }
+                .disabled(
+                    canonical.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                        || pattern.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                )
+            }
+            .padding(.top, 8)
+        }
+        .padding(24)
+        .frame(width: 460)
+        .background(Color.uiPaper)
     }
 }
