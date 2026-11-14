@@ -2,7 +2,6 @@ import SwiftUI
 
 struct OnboardingView: View {
     @ObservedObject var permissions = PermissionManager.shared
-    @ObservedObject var audioCapture = AudioCapture.shared
     @Binding var isPresented: Bool
     
     var canContinue: Bool {
@@ -95,30 +94,6 @@ struct OnboardingView: View {
                                 }
                             }
                         }
-                        
-                        Divider().background(Color.uiHairline)
-                        
-                        // ШАГ 3: Анонимная аналитика
-                        HStack(spacing: 16) {
-                            Circle()
-                                .fill(audioCapture.analyticsEnabled ? Color(hex: "#10B981") : Color.uiMidGray.opacity(0.4))
-                                .frame(width: 10, height: 10)
-                            
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text("Делиться аналитикой")
-                                    .font(UIStyleFont.display(size: 14, weight: .medium))
-                                    .foregroundColor(.uiInk)
-                                Text("Помогите улучшить продукт. Отправляются только обезличенные метрики — без текста, аудио и имён файлов.")
-                                    .font(UIStyleFont.body(size: 12, weight: .regular))
-                                    .foregroundColor(.uiMidGray)
-                            }
-                            
-                            Spacer()
-                            
-                            Toggle("", isOn: $audioCapture.analyticsEnabled)
-                                .labelsHidden()
-                                .toggleStyle(SwitchToggleStyle(tint: Color(hex: "#10B981")))
-                        }
                     }
                 }
                 .frame(maxWidth: 480)
@@ -131,23 +106,6 @@ struct OnboardingView: View {
                 }
                 .disabled(!canContinue)
                 .opacity(canContinue ? 1.0 : 0.4)
-                
-                Text(LocalizedStringKey("Нажимая «Начать использовать», вы принимаете [Условия лицензии](https://golosok.space/docs/public-offer/) и [Политику конфиденциальности](https://golosok.space/docs/privacy-policy/)."))
-                    .font(UIStyleFont.body(size: 11, weight: .regular))
-                    .foregroundColor(.uiMidGray)
-                    .multilineTextAlignment(.center)
-                    .frame(maxWidth: 440)
-                    .tint(Color(hex: "#6366F1"))
-                
-                HStack(spacing: 0) {
-                    Text("Design & Development by ")
-                    Link("Kozak", destination: URL(string: "https://dprofile.ru/kozak_developer")!)
-                        .foregroundColor(Color(hex: "#6366F1"))
-                    Text(" • 2026")
-                }
-                .font(UIStyleFont.body(size: 11, weight: .regular))
-                .foregroundColor(.uiMidGray)
-                .padding(.top, 4)
             }
             .padding(40)
         }

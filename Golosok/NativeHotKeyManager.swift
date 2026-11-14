@@ -109,7 +109,6 @@ class NativeHotKeyManager {
         let status1 = RegisterEventHotKey(keyCode, modifierFlags, dictationID, GetApplicationEventTarget(), 0, &hotKeyRef)
         if status1 != noErr {
             AppLogger.shared.error("HotKey", "Не удалось зарегистрировать горячую клавишу диктовки", details: "status \(status1), комбинация \(displayName())")
-            Telemetry.shared.event("hotkey_register_failed", ["error_detail": "dictation_status_\(status1)"])
         } else {
             AppLogger.shared.info("HotKey", "Горячая клавиша диктовки зарегистрирована", details: displayName())
         }
@@ -119,7 +118,6 @@ class NativeHotKeyManager {
         let status2 = RegisterEventHotKey(selectionKeyCode, selectionModifierFlags, selectionID, GetApplicationEventTarget(), 0, &selectionHotKeyRef)
         if status2 != noErr {
             AppLogger.shared.error("HotKey", "Не удалось зарегистрировать горячую клавишу ИИ-обработки", details: "status \(status2), комбинация \(selectionDisplayName())")
-            Telemetry.shared.event("hotkey_register_failed", ["error_detail": "selection_status_\(status2)"])
         } else {
             AppLogger.shared.info("HotKey", "Горячая клавиша ИИ-обработки зарегистрирована", details: selectionDisplayName())
         }

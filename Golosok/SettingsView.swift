@@ -117,24 +117,7 @@ struct SettingsView: View {
                                 .labelsHidden()
                                 .toggleStyle(SwitchToggleStyle(tint: Color(hex: "#10B981")))
                         }
-                        
-                        Divider().background(Color.uiHairline)
-                        
-                        HStack {
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text("Делиться аналитикой")
-                                    .font(UIStyleFont.body(size: 13, weight: .medium))
-                                    .foregroundColor(.uiInk)
-                                Text("Обезличенные метрики: скорость, ошибки, версия ОС и модели. Без текста и аудио.")
-                                    .font(UIStyleFont.body(size: 11, weight: .regular))
-                                    .foregroundColor(.uiMidGray)
-                            }
-                            Spacer()
-                            Toggle("", isOn: $audioCapture.analyticsEnabled)
-                                .labelsHidden()
-                                .toggleStyle(SwitchToggleStyle(tint: Color(hex: "#10B981")))
-                        }
-                        
+
                         Divider().background(Color.uiHairline)
                         
                         // 4. Звуки

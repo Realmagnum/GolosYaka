@@ -177,9 +177,6 @@ class AudioCapture: NSObject, ObservableObject, AVAudioRecorderDelegate {
     @Published var autoAIProcessTemplateID: String = UserDefaults.standard.string(forKey: "ai.autoProcess.templateID") ?? "restoreTechTerms" {
         didSet { UserDefaults.standard.set(autoAIProcessTemplateID, forKey: "ai.autoProcess.templateID") }
     }
-    @Published var analyticsEnabled: Bool = UserDefaults.standard.object(forKey: "analyticsEnabled") as? Bool ?? true {
-        didSet { UserDefaults.standard.set(analyticsEnabled, forKey: "analyticsEnabled") }
-    }
     @Published var launchAtLoginEnabled: Bool = UserDefaults.standard.bool(forKey: "launchAtLoginEnabled") {
         didSet {
             UserDefaults.standard.set(launchAtLoginEnabled, forKey: "launchAtLoginEnabled")
@@ -206,10 +203,6 @@ class AudioCapture: NSObject, ObservableObject, AVAudioRecorderDelegate {
     override init() {
         super.init()
         
-        if UserDefaults.standard.object(forKey: "analyticsEnabled") == nil {
-            self.analyticsEnabled = true
-        }
-
         let currentVer = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? ""
         if let lastActive = UserDefaults.standard.string(forKey: "lastActiveVersion"), lastActive != currentVer {
             UserDefaults.standard.removeObject(forKey: "cachedUpdateInfo")
@@ -222,17 +215,6 @@ class AudioCapture: NSObject, ObservableObject, AVAudioRecorderDelegate {
         loadHistory()
         DispatchQueue.main.asyncAfter(deadline: .now() + 4.5) { [weak self] in
             self?.checkUpdates()
-        }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 5.0) { [weak self] in
-            guard self != nil else { return }
-            let launchCount = UserDefaults.standard.integer(forKey: "launch_count") + 1
-            UserDefaults.standard.set(launchCount, forKey: "launch_count")
-            Telemetry.shared.event("app_launch", [
-                "launch_count": launchCount,
-                "mic_granted": AVCaptureDevice.authorizationStatus(for: .audio) == .authorized,
-                "accessibility_granted": PermissionManager.shared.isAccessibilityGranted,
-                "model_id": ModelStore.shared.activeModelID
-            ])
         }
         DispatchQueue.main.asyncAfter(deadline: .now() + 6.0) { [weak self] in
             guard let self else { return }
@@ -617,7 +599,6 @@ class AudioCapture: NSObject, ObservableObject, AVAudioRecorderDelegate {
         DispatchQueue.main.async {
             if prettyFormattedText.isEmpty {
                 AppLogger.shared.warn("Recognition", "Речь не распознана", details: String(format: "аудио %.1f с", realAudioSecs))
-                Telemetry.shared.event("dictation_failed", ["audio_duration_sec": realAudioSecs])
                 self.pipelinePhase = .idle
                 OverlayPanelManager.shared.showWarning(message: .key("Речь не распознана"))
             } else {
@@ -663,7 +644,6 @@ class AudioCapture: NSObject, ObservableObject, AVAudioRecorderDelegate {
                 }
             }
             
-            self.sendTelemetry(eventType: isFileImport ? "file_import" : "dictation", audioDurationSec: realAudioSecs, characterCount: rawText.count, speedup: calculatedSpeedup)
             finish()
         }
     }
@@ -1699,7 +1679,6 @@ class AudioCapture: NSObject, ObservableObject, AVAudioRecorderDelegate {
         guard autoPasteEnabled else { return }
         guard AXIsProcessTrusted() else {
             AppLogger.shared.warn("Paste", "Доступ AX недоступен — пропускаем вставку. Пользователь должен включить её в Настройках.")
-            Telemetry.shared.event("paste_skipped", ["paste_reason": "no_ax_access"])
             return
         }
         guard let target = pasteTarget else { return }
@@ -1708,11 +1687,9 @@ class AudioCapture: NSObject, ObservableObject, AVAudioRecorderDelegate {
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
             guard self.canAcceptPaste(pid: pid) else {
                 AppLogger.shared.info("Paste", "Вставка пропущена: под фокусом нет редактируемого поля", details: target.localizedName)
-                Telemetry.shared.event("paste_skipped", ["paste_reason": "no_focus"])
                 return
             }
             AppLogger.shared.info("Paste", "Cmd+V отправлен", details: target.localizedName)
-            Telemetry.shared.event("paste_success", ["paste_method": "cgkey"])
             let source = CGEventSource(stateID: .combinedSessionState)
             guard let keyDown = CGEvent(keyboardEventSource: source, virtualKey: 0x09, keyDown: true),
                   let keyUp = CGEvent(keyboardEventSource: source, virtualKey: 0x09, keyDown: false) else { return }
@@ -1737,14 +1714,6 @@ class AudioCapture: NSObject, ObservableObject, AVAudioRecorderDelegate {
         default:
             return false
         }
-    }
-    
-    private func sendTelemetry(eventType: String, audioDurationSec: Double, characterCount: Int, speedup: Double) {
-        Telemetry.shared.event(eventType, [
-            "audio_duration_sec": audioDurationSec,
-            "character_count": characterCount,
-            "speedup_factor": speedup
-        ])
     }
     
     // MARK: - Субтитры
