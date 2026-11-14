@@ -13,7 +13,6 @@ struct AIProviderPreset: Identifiable, Codable {
     var baseURL: String
     var defaultModel: String
     var needsKey: Bool
-    var isProxy: Bool = false
     var isCustom: Bool = false
 }
 
@@ -58,15 +57,6 @@ enum AIProviderPresets {
             baseURL: "http://localhost:11434/v1",
             defaultModel: "gemma3:1b",
             needsKey: false
-        ),
-        AIProviderPreset(
-            id: "golosok_proxy",
-            name: "Голосок+",
-            hint: "Облачные модели на серверах Голоска — по подписке",
-            baseURL: "https://golosok.space/api/v1",
-            defaultModel: "",
-            needsKey: false,
-            isProxy: true
         )
     ]
 
@@ -117,10 +107,41 @@ struct AIProviderConfig {
     let baseURL: String
     let apiKey: String
     let model: String
-    let isProxy: Bool
     let reasoningEffort: AIReasoningEffort
     let thinkingBudgetMode: AIThinkingBudgetMode
     let maxTokens: Int
+}
+
+final class AICancelableRequest {
+    private let lock = NSLock()
+    private var currentTask: URLSessionDataTask?
+    private var cancelled = false
+
+    var isCancelled: Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        return cancelled
+    }
+
+    func bind(_ task: URLSessionDataTask?) {
+        lock.lock()
+        if cancelled {
+            lock.unlock()
+            task?.cancel()
+            return
+        }
+        currentTask = task
+        lock.unlock()
+    }
+
+    func cancel() {
+        lock.lock()
+        cancelled = true
+        let task = currentTask
+        currentTask = nil
+        lock.unlock()
+        task?.cancel()
+    }
 }
 
 enum AIError: LocalizedError {
@@ -134,17 +155,17 @@ enum AIError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .notConfigured:
-            return String(localized: "ИИ-провайдер не настроен")
+            return L10n.tr("ИИ-провайдер не настроен")
         case .invalidURL:
-            return String(localized: "Некорректный baseURL")
+            return L10n.tr("Некорректный baseURL")
         case .network(let message):
-            return String(localized: "Сетевая ошибка") + ": \(message)"
+            return L10n.tr("Сетевая ошибка") + ": \(message)"
         case .http(let code, let message):
-            return String(localized: "Ошибка сервера") + " \(code): \(message)"
+            return L10n.tr("Ошибка сервера") + " \(code): \(message)"
         case .emptyResponse:
-            return String(localized: "Модель вернула пустой ответ")
+            return L10n.tr("Модель вернула пустой ответ")
         case .parse(let message):
-            return String(localized: "Не удалось разобрать ответ") + ": \(message)"
+            return L10n.tr("Не удалось разобрать ответ") + ": \(message)"
         }
     }
 }
@@ -152,25 +173,44 @@ enum AIError: LocalizedError {
 final class AIProviderStore: ObservableObject {
     static let shared = AIProviderStore()
 
-    @Published var providerID: String { didSet { Self.defaults.set(providerID, forKey: "ai.providerID") } }
+    /// Провайдер, который реально используется для ИИ-запросов.
+    /// Назначается только вручную и не меняется при просмотре настроек других провайдеров.
+    @Published private(set) var providerID: String {
+        didSet {
+            Self.defaults.set(providerID, forKey: "ai.primaryProviderID")
+            Self.defaults.set(providerID, forKey: "ai.providerID")
+        }
+    }
+
+    /// Провайдер, открытый в настройках для просмотра и редактирования.
+    /// Это состояние UI: оно не влияет на выбор основного провайдера.
+    @Published var inspectedProviderID: String {
+        didSet { Self.defaults.set(inspectedProviderID, forKey: "ai.inspectedProviderID") }
+    }
+
     @Published var isFailoverEnabled: Bool { didSet { Self.defaults.set(isFailoverEnabled, forKey: "ai.failover.enabled") } }
     @Published var failoverProviderID: String { didSet { Self.defaults.set(failoverProviderID, forKey: "ai.failover.providerID") } }
+
     @Published var baseURL: String {
         didSet {
-            Self.defaults.set(baseURL, forKey: "ai.baseURL")
-            Self.defaults.set(baseURL, forKey: "ai.provider.\(providerID).baseURL")
+            Self.defaults.set(baseURL, forKey: "ai.provider.\(inspectedProviderID).baseURL")
+            if inspectedProviderID == providerID {
+                Self.defaults.set(baseURL, forKey: "ai.baseURL")
+            }
         }
     }
     @Published var model: String {
         didSet {
-            Self.defaults.set(model, forKey: "ai.model")
-            Self.defaults.set(model, forKey: "ai.provider.\(providerID).model")
+            Self.defaults.set(model, forKey: "ai.provider.\(inspectedProviderID).model")
+            if inspectedProviderID == providerID {
+                Self.defaults.set(model, forKey: "ai.model")
+            }
         }
     }
     @Published var apiKey: String {
         didSet {
             if apiKey != oldValue {
-                KeyStore.set(apiKey, for: "ai.provider.\(providerID).apiKey")
+                KeyStore.set(apiKey, for: "ai.provider.\(inspectedProviderID).apiKey")
             }
         }
     }
@@ -187,7 +227,8 @@ final class AIProviderStore: ObservableObject {
     }
 
     @Published var isTesting = false
-    @Published var testResult: String?
+    @Published var testResultMessage: LocalizedMessage?
+    var testResult: String? { testResultMessage?.localized }
     @Published var testOK = false
     @Published var installedModels: [String] = []
     @Published var isLoadingModels = false
@@ -231,36 +272,46 @@ final class AIProviderStore: ObservableObject {
         }
         self.customPresets = loadedCustom
 
-        let savedID = Self.defaults.string(forKey: "ai.providerID") ?? ""
-        let initialPreset = loadedCustom.first(where: { $0.id == savedID })
-            ?? AIProviderPresets.builtin.first(where: { $0.id == savedID })
-            ?? AIProviderPresets.builtin[0]
-        let currentID = savedID.isEmpty ? initialPreset.id : savedID
-        self.providerID = currentID
+        // Миграция: один и тот же сохранённый ID раньше был и активным, и просматриваемым.
+        let savedPrimaryID = Self.defaults.string(forKey: "ai.primaryProviderID")
+            ?? Self.defaults.string(forKey: "ai.providerID")
+            ?? ""
+        let savedInspectedID = Self.defaults.string(forKey: "ai.inspectedProviderID") ?? savedPrimaryID
+
+        func resolve(_ id: String) -> AIProviderPreset? {
+            loadedCustom.first(where: { $0.id == id })
+                ?? AIProviderPresets.builtin.first(where: { $0.id == id })
+        }
+
+        let primaryPreset = resolve(savedPrimaryID) ?? AIProviderPresets.builtin[0]
+        let inspectedPreset = resolve(savedInspectedID) ?? primaryPreset
+        // Глобальные ai.baseURL / ai.model / ai.apiKey читаем только один раз — при первом запуске
+        // после обновления. Дальше источником правды остаются профили провайдеров.
+        let needsLegacyMigration = Self.defaults.string(forKey: "ai.primaryProviderID") == nil
+        let legacyID: String? = needsLegacyMigration ? (savedPrimaryID.isEmpty ? primaryPreset.id : savedPrimaryID) : nil
+
+        self.providerID = primaryPreset.id
+        self.inspectedProviderID = inspectedPreset.id
         self.isFailoverEnabled = Self.defaults.object(forKey: "ai.failover.enabled") as? Bool ?? false
         self.failoverProviderID = Self.defaults.string(forKey: "ai.failover.providerID") ?? "ollama"
-        let resolvedBaseURL = Self.defaults.string(forKey: "ai.provider.\(currentID).baseURL")
-            ?? Self.defaults.string(forKey: "ai.baseURL")
-            ?? initialPreset.baseURL
-        self.baseURL = resolvedBaseURL
-        var resolvedModel = Self.defaults.string(forKey: "ai.provider.\(currentID).model")
-            ?? Self.defaults.string(forKey: "ai.model")
-            ?? initialPreset.defaultModel
-        if currentID == "neuraldeep" && (resolvedModel == "neuraldeep/qwen3.8-27b" || resolvedModel.isEmpty) {
-            resolvedModel = "qwen3.6-fp8-noreason"
-            Self.defaults.set(resolvedModel, forKey: "ai.provider.neuraldeep.model")
-            Self.defaults.set(resolvedModel, forKey: "ai.model")
+
+        // Однократная миграция старых глобальных настроек в изолированный профиль основного провайдера.
+        let primaryBaseURL = Self.savedBaseURL(for: primaryPreset, legacyID: legacyID)
+        let primaryModel = Self.savedModel(for: primaryPreset, legacyID: legacyID)
+        let primaryAPIKey = Self.savedAPIKey(for: primaryPreset, legacyID: legacyID)
+        if Self.defaults.string(forKey: "ai.provider.\(primaryPreset.id).baseURL") == nil {
+            Self.defaults.set(primaryBaseURL, forKey: "ai.provider.\(primaryPreset.id).baseURL")
         }
-        if currentID == "deepseek" && (resolvedModel == "deepseek-chat" || resolvedModel == "deepseek-reasoner" || resolvedModel.isEmpty) {
-            resolvedModel = "deepseek-flash"
-            Self.defaults.set(resolvedModel, forKey: "ai.provider.deepseek.model")
-            Self.defaults.set(resolvedModel, forKey: "ai.model")
+        if Self.defaults.string(forKey: "ai.provider.\(primaryPreset.id).model") == nil {
+            Self.defaults.set(primaryModel, forKey: "ai.provider.\(primaryPreset.id).model")
         }
-        self.model = resolvedModel
-        self.apiKey = KeyStore.get("ai.provider.\(currentID).apiKey")
-            ?? (resolvedBaseURL.contains("8317") ? KeyStore.get("ai.provider.openai.apiKey") : nil)
-            ?? KeyStore.get("ai.apiKey")
-            ?? ""
+        if (KeyStore.get("ai.provider.\(primaryPreset.id).apiKey") ?? "").isEmpty, !primaryAPIKey.isEmpty {
+            KeyStore.set(primaryAPIKey, for: "ai.provider.\(primaryPreset.id).apiKey")
+        }
+
+        self.baseURL = Self.savedBaseURL(for: inspectedPreset, legacyID: nil)
+        self.model = Self.savedModel(for: inspectedPreset, legacyID: nil)
+        self.apiKey = Self.savedAPIKey(for: inspectedPreset, legacyID: nil)
         self.allowInsecureHTTP = Self.defaults.object(forKey: "ai.allowInsecureHTTP") as? Bool ?? true
 
         if let rawEffort = Self.defaults.string(forKey: "ai.reasoningEffort"),
@@ -278,7 +329,171 @@ final class AIProviderStore: ObservableObject {
         }
 
         self.maxTokensString = Self.defaults.string(forKey: "ai.maxTokens") ?? "4096"
+
+        // Фиксируем нормализованные роли, чтобы миграция старых глобальных ключей выполнилась один раз.
+        Self.defaults.set(self.providerID, forKey: "ai.primaryProviderID")
+        Self.defaults.set(self.inspectedProviderID, forKey: "ai.inspectedProviderID")
     }
+
+    // MARK: - Разрешение сохранённых настроек провайдера
+
+    private static func savedBaseURL(for preset: AIProviderPreset, legacyID: String?) -> String {
+        if let value = defaults.string(forKey: "ai.provider.\(preset.id).baseURL"), !value.isEmpty {
+            return value
+        }
+        if preset.id == legacyID, let legacy = defaults.string(forKey: "ai.baseURL"), !legacy.isEmpty {
+            return legacy
+        }
+        return preset.baseURL
+    }
+
+    private static func savedModel(for preset: AIProviderPreset, legacyID: String?) -> String {
+        var value = defaults.string(forKey: "ai.provider.\(preset.id).model")
+            ?? (preset.id == legacyID ? defaults.string(forKey: "ai.model") : nil)
+            ?? preset.defaultModel
+        if preset.id == "neuraldeep" && (value == "neuraldeep/qwen3.8-27b" || value.isEmpty) {
+            value = "qwen3.6-fp8-noreason"
+        }
+        if preset.id == "deepseek" && (value == "deepseek-chat" || value == "deepseek-reasoner" || value.isEmpty) {
+            value = "deepseek-flash"
+        }
+        return value
+    }
+
+    private static func savedAPIKey(for preset: AIProviderPreset, legacyID: String?) -> String {
+        if let key = KeyStore.get("ai.provider.\(preset.id).apiKey"), !key.isEmpty {
+            return key
+        }
+        if preset.baseURL.contains("8317"), let key = KeyStore.get("ai.provider.openai.apiKey"), !key.isEmpty {
+            return key
+        }
+        if preset.id == legacyID, let key = KeyStore.get("ai.apiKey"), !key.isEmpty {
+            return key
+        }
+        return ""
+    }
+
+    private func providerConfig(for presetID: String) -> AIProviderConfig {
+        let preset = allPresets.first(where: { $0.id == presetID }) ?? AIProviderPresets.builtin[0]
+        return AIProviderConfig(
+            baseURL: Self.savedBaseURL(for: preset, legacyID: nil),
+            apiKey: Self.savedAPIKey(for: preset, legacyID: nil),
+            model: Self.savedModel(for: preset, legacyID: nil),
+            reasoningEffort: reasoningEffort,
+            thinkingBudgetMode: thinkingBudgetMode,
+            maxTokens: maxTokens
+        )
+    }
+
+    /// Конфигурация основного (Primary) провайдера, которая используется всеми ИИ-запросами.
+    var config: AIProviderConfig {
+        providerConfig(for: providerID)
+    }
+
+    /// Черновая конфигурация провайдера, открытого в настройках.
+    /// Применяется только для кнопок «Проверить» и обновления списка моделей.
+    var draftConfig: AIProviderConfig {
+        AIProviderConfig(
+            baseURL: baseURL,
+            apiKey: apiKey,
+            model: model,
+            reasoningEffort: reasoningEffort,
+            thinkingBudgetMode: thinkingBudgetMode,
+            maxTokens: maxTokens
+        )
+    }
+
+    /// Конфигурация для резервного провайдера (Failover)
+    var failoverConfig: AIProviderConfig? {
+        guard isFailoverEnabled, !failoverProviderID.isEmpty, failoverProviderID != providerID else { return nil }
+        guard let preset = failoverPreset else { return nil }
+        let cfg = providerConfig(for: preset.id)
+        guard !cfg.baseURL.trimmingCharacters(in: .whitespaces).isEmpty,
+              !cfg.model.trimmingCharacters(in: .whitespaces).isEmpty else { return nil }
+        return cfg
+    }
+
+    var isConfigured: Bool {
+        let cfg = config
+        return !cfg.baseURL.trimmingCharacters(in: .whitespaces).isEmpty
+            && !cfg.model.trimmingCharacters(in: .whitespaces).isEmpty
+    }
+
+    // MARK: - Ручное назначение ролей
+
+    var primaryPreset: AIProviderPreset? {
+        allPresets.first { $0.id == providerID }
+    }
+
+    var currentPreset: AIProviderPreset? {
+        allPresets.first { $0.id == inspectedProviderID }
+    }
+
+    var failoverPreset: AIProviderPreset? {
+        allPresets.first { $0.id == failoverProviderID }
+    }
+
+    func isPrimary(_ presetID: String) -> Bool {
+        providerID == presetID
+    }
+
+    func isFailover(_ presetID: String) -> Bool {
+        isFailoverEnabled && failoverProviderID == presetID && failoverProviderID != providerID
+    }
+
+    /// Открыть провайдера для просмотра/редактирования, не меняя основной.
+    func inspect(_ preset: AIProviderPreset) {
+        inspectedProviderID = preset.id
+        loadInspectedSettings()
+        resetTestState()
+        if preset.id == "ollama" {
+            refreshModels()
+        }
+        AppLogger.shared.info("AI", "Открыт провайдер \(preset.name)", details: preset.baseURL)
+    }
+
+    /// Явно назначить провайдера основным (Primary).
+    func makePrimary(_ preset: AIProviderPreset) {
+        guard providerID != preset.id else { return }
+        providerID = preset.id
+        if failoverProviderID == preset.id {
+            isFailoverEnabled = false
+        }
+        if inspectedProviderID != preset.id {
+            inspect(preset)
+        }
+        testResultMessage = nil
+        testOK = false
+        AppLogger.shared.info("AI", "Основной провайдер назначен вручную", details: "\(preset.name) (\(preset.id))")
+    }
+
+    /// Явно включить или выключить резервного провайдера (Failover).
+    func setFailover(_ preset: AIProviderPreset, enabled: Bool) {
+        guard preset.id != providerID else { return }
+        if enabled {
+            failoverProviderID = preset.id
+            isFailoverEnabled = true
+            AppLogger.shared.info("AI", "Резервный провайдер назначен вручную", details: "\(preset.name) (\(preset.id))")
+        } else if failoverProviderID == preset.id {
+            isFailoverEnabled = false
+            AppLogger.shared.info("AI", "Резервный провайдер отключён вручную", details: preset.id)
+        }
+    }
+
+    private func loadInspectedSettings() {
+        guard let preset = currentPreset else { return }
+        baseURL = Self.savedBaseURL(for: preset, legacyID: nil)
+        model = Self.savedModel(for: preset, legacyID: nil)
+        apiKey = Self.savedAPIKey(for: preset, legacyID: nil)
+    }
+
+    private func resetTestState() {
+        testResultMessage = nil
+        testOK = false
+        installedModels = []
+    }
+
+    // MARK: - Управление кастомными провайдерами
 
     func setPresetName(_ newName: String, for presetId: String) {
         let clean = newName.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -305,7 +520,6 @@ final class AIProviderStore: ObservableObject {
             baseURL: cleanURL,
             defaultModel: cleanModel.isEmpty ? "default" : cleanModel,
             needsKey: false,
-            isProxy: false,
             isCustom: true
         )
         customPresets.append(preset)
@@ -315,20 +529,30 @@ final class AIProviderStore: ObservableObject {
             KeyStore.set(key, for: "ai.provider.\(id).apiKey")
         }
 
-        apply(preset)
+        // Добавление провайдера не делает его основным: приоритет назначается вручную.
+        inspect(preset)
     }
 
     func deleteCustomPreset(id: String) {
+        let wasPrimary = providerID == id
+        let wasFailover = failoverProviderID == id
+
         customPresets.removeAll { $0.id == id }
         customDisplayNames.removeValue(forKey: id)
         Self.defaults.set(customDisplayNames, forKey: "ai.provider.custom_names")
         persistCustomPresets()
         KeyStore.delete("ai.provider.\(id).apiKey")
 
-        if providerID == id {
-            if let first = AIProviderPresets.builtin.first {
-                apply(first)
-            }
+        if wasFailover {
+            isFailoverEnabled = false
+        }
+        if wasPrimary, let fallback = AIProviderPresets.builtin.first {
+            providerID = fallback.id
+        }
+        // Если удалён просматриваемый провайдер (или текущий просмотр стал невалидным),
+        // переключаем просмотр на основной. Приоритет при этом не меняется.
+        if currentPreset == nil, let primary = primaryPreset {
+            inspect(primary)
         } else {
             objectWillChange.send()
         }
@@ -340,96 +564,11 @@ final class AIProviderStore: ObservableObject {
         try? data.write(to: url, options: .atomic)
     }
 
-    var currentPreset: AIProviderPreset? {
-        allPresets.first { $0.id == providerID }
-    }
-
-    var failoverPreset: AIProviderPreset? {
-        allPresets.first { $0.id == failoverProviderID }
-    }
-
-    var config: AIProviderConfig {
-        let isProxy = currentPreset?.isProxy ?? false
-        return AIProviderConfig(
-            baseURL: baseURL,
-            apiKey: isProxy ? AccountStore.shared.token : apiKey,
-            model: model,
-            isProxy: isProxy,
-            reasoningEffort: reasoningEffort,
-            thinkingBudgetMode: thinkingBudgetMode,
-            maxTokens: maxTokens
-        )
-    }
-
-    /// Конфигурация для резервного провайдера (Failover)
-    var failoverConfig: AIProviderConfig? {
-        guard isFailoverEnabled, !failoverProviderID.isEmpty, failoverProviderID != providerID else { return nil }
-        guard let preset = failoverPreset else { return nil }
-
-        let bURL = Self.defaults.string(forKey: "ai.provider.\(preset.id).baseURL") ?? preset.baseURL
-        let mdl = Self.defaults.string(forKey: "ai.provider.\(preset.id).model") ?? preset.defaultModel
-        let isProxy = preset.isProxy
-        let key = isProxy ? AccountStore.shared.token : (KeyStore.get("ai.provider.\(preset.id).apiKey") ?? "")
-
-        guard isProxy || (!bURL.isEmpty && !mdl.isEmpty) else { return nil }
-
-        return AIProviderConfig(
-            baseURL: bURL,
-            apiKey: key,
-            model: mdl,
-            isProxy: isProxy,
-            reasoningEffort: reasoningEffort,
-            thinkingBudgetMode: thinkingBudgetMode,
-            maxTokens: maxTokens
-        )
-    }
-
-    var isConfigured: Bool {
-        if currentPreset?.isProxy == true {
-            return true
-        }
-        return !baseURL.trimmingCharacters(in: .whitespaces).isEmpty
-            && !model.trimmingCharacters(in: .whitespaces).isEmpty
-    }
-
-    func apply(_ preset: AIProviderPreset) {
-        guard providerID != preset.id else {
-            // Если выбран тот же пресет, не сбрасываем пользовательские настройки
-            return
-        }
-
-        providerID = preset.id
-
-        // Восстанавливаем ранее сохраненные настройки именно для этого провайдера,
-        // либо берем дефолтные значения пресета
-        baseURL = Self.defaults.string(forKey: "ai.provider.\(preset.id).baseURL") ?? preset.baseURL
-        var savedModel = Self.defaults.string(forKey: "ai.provider.\(preset.id).model") ?? preset.defaultModel
-        if preset.id == "neuraldeep" && savedModel == "neuraldeep/qwen3.8-27b" {
-            savedModel = "qwen3.6-fp8-noreason"
-        }
-        if preset.id == "deepseek" && (savedModel == "deepseek-chat" || savedModel == "deepseek-reasoner") {
-            savedModel = "deepseek-flash"
-        }
-        model = savedModel
-        apiKey = KeyStore.get("ai.provider.\(preset.id).apiKey")
-            ?? (preset.baseURL.contains("8317") ? KeyStore.get("ai.provider.openai.apiKey") : nil)
-            ?? KeyStore.get("ai.apiKey")
-            ?? (preset.needsKey ? "" : "")
-
-        testResult = nil
-        testOK = false
-        installedModels = []
-        if preset.id == "ollama" {
-            refreshModels()
-        }
-        AppLogger.shared.info("AI", "Выбран провайдер \(preset.name)", details: baseURL)
-    }
-
     func refreshModels() {
-        guard !(currentPreset?.isProxy ?? false) else { return }
+        guard !isLoadingModels else { return }
         isLoadingModels = true
         installedModels = []
-        AIService.shared.listModels(using: config) { [weak self] result in
+        AIService.shared.listModels(using: draftConfig) { [weak self] result in
             DispatchQueue.main.async {
                 guard let self else { return }
                 self.isLoadingModels = false
@@ -444,48 +583,42 @@ final class AIProviderStore: ObservableObject {
     }
 
     func testConnection() {
-        if currentPreset?.isProxy == true {
-            testOK = AccountStore.shared.isConnected
-            testResult = AccountStore.shared.isConnected ? String(localized: "Сервер доступен через аккаунт") : String(localized: "Подключите аккаунт")
-            return
-        }
-
         let cleanURL = baseURL.trimmingCharacters(in: .whitespaces)
         let cleanModel = model.trimmingCharacters(in: .whitespaces)
 
         if cleanURL.isEmpty {
             testOK = false
-            testResult = String(localized: "Заполните Base URL")
+            testResultMessage = .key("Заполните Base URL")
             return
         }
         if cleanModel.isEmpty {
             testOK = false
-            testResult = String(localized: "Укажите модель")
+            testResultMessage = .key("Укажите модель")
             return
         }
 
         let trimmedURL = cleanURL.lowercased()
         if trimmedURL.hasPrefix("http://") && !allowInsecureHTTP {
             testOK = false
-            testResult = String(localized: "HTTP запрещён. Включите разрешение HTTP или используйте HTTPS.")
+            testResultMessage = .key("HTTP запрещён. Включите разрешение HTTP или используйте HTTPS.")
             return
         }
 
         isTesting = true
-        testResult = nil
+        testResultMessage = nil
         testOK = false
-        AIService.shared.test(using: config) { [weak self] result in
+        AIService.shared.test(using: draftConfig) { [weak self] result in
             DispatchQueue.main.async {
                 guard let self else { return }
                 self.isTesting = false
                 switch result {
                 case .success:
                     self.testOK = true
-                    self.testResult = String(localized: "Подключено")
+                    self.testResultMessage = .key("Подключено")
                     AppLogger.shared.info("AI", "Проверка подключения успешна", details: "\(self.baseURL) / \(self.model)")
                 case .failure(let error):
                     self.testOK = false
-                    self.testResult = error.localizedDescription
+                    self.testResultMessage = .raw(error.localizedDescription)
                     AppLogger.shared.warn("AI", "Проверка подключения не удалась", details: error.localizedDescription)
                 }
             }
@@ -519,7 +652,7 @@ final class AIService {
         let minTokensForOutput = approxPromptTokens + 512
 
         var payload: [String: Any] = [:]
-        if !config.isProxy && !config.model.isEmpty {
+        if !config.model.isEmpty {
             payload["model"] = config.model
         }
 
@@ -629,11 +762,19 @@ final class AIService {
         using config: AIProviderConfig,
         promptLength: Int? = nil,
         isFallback: Bool = false,
+        handle: AICancelableRequest? = nil,
         onChunk: @escaping (String, String?) -> Void,
         completion: @escaping (Result<String, AIError>) -> Void
-    ) -> URLSessionDataTask? {
+    ) -> AICancelableRequest? {
+        let requestHandle = handle ?? AICancelableRequest()
+        if requestHandle.isCancelled { return requestHandle }
+
         guard let url = url(config.baseURL, path: "chat/completions") else {
             completion(.failure(.invalidURL))
+            return nil
+        }
+        if url.scheme?.lowercased() == "http" && !AIProviderStore.shared.allowInsecureHTTP {
+            completion(.failure(.network(L10n.tr("HTTP запрещён. Включите разрешение HTTP или используйте HTTPS."))))
             return nil
         }
         var request = URLRequest(url: url)
@@ -643,7 +784,6 @@ final class AIService {
         if !config.apiKey.isEmpty {
             request.setValue("Bearer \(config.apiKey)", forHTTPHeaderField: "Authorization")
         }
-        addProxyHeaders(&request, config: config)
 
         let payloadInfo = buildUniversalPayload(
             messages: messages,
@@ -662,11 +802,12 @@ final class AIService {
 
         let allowReasoning = (config.reasoningEffort != .off || config.thinkingBudgetMode != .off)
 
-        return SSEStreamManager.shared.startStream(
+        let task = SSEStreamManager.shared.startStream(
             with: request,
             allowReasoning: allowReasoning,
             onChunk: onChunk
         ) { [weak self] result in
+            if requestHandle.isCancelled { return }
             switch result {
             case .failure(let error):
                 if case .http(let code, let msg) = error, code == 400, !isFallback {
@@ -676,6 +817,7 @@ final class AIService {
                         using: config,
                         promptLength: promptLength,
                         isFallback: true,
+                        handle: requestHandle,
                         onChunk: onChunk,
                         completion: completion
                     )
@@ -691,6 +833,7 @@ final class AIService {
                             using: backup,
                             promptLength: promptLength,
                             isFallback: false,
+                            handle: requestHandle,
                             onChunk: onChunk,
                             completion: completion
                         )
@@ -703,6 +846,8 @@ final class AIService {
                 completion(.success(val))
             }
         }
+        requestHandle.bind(task)
+        return requestHandle
     }
 
     @discardableResult
@@ -710,21 +855,29 @@ final class AIService {
         messages: [AIChatMessage],
         using config: AIProviderConfig,
         promptLength: Int? = nil,
+        timeout: TimeInterval = 25,
         isFallback: Bool = false,
+        handle: AICancelableRequest? = nil,
         completion: @escaping (Result<String, AIError>) -> Void
-    ) -> URLSessionDataTask? {
+    ) -> AICancelableRequest? {
+        let requestHandle = handle ?? AICancelableRequest()
+        if requestHandle.isCancelled { return requestHandle }
+
         guard let url = url(config.baseURL, path: "chat/completions") else {
             completion(.failure(.invalidURL))
             return nil
         }
+        if url.scheme?.lowercased() == "http" && !AIProviderStore.shared.allowInsecureHTTP {
+            completion(.failure(.network(L10n.tr("HTTP запрещён. Включите разрешение HTTP или используйте HTTPS."))))
+            return nil
+        }
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
-        request.timeoutInterval = 25
+        request.timeoutInterval = timeout
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         if !config.apiKey.isEmpty {
             request.setValue("Bearer \(config.apiKey)", forHTTPHeaderField: "Authorization")
         }
-        addProxyHeaders(&request, config: config)
 
         let payloadInfo = buildUniversalPayload(
             messages: messages,
@@ -742,6 +895,7 @@ final class AIService {
         AppLogger.shared.info("AI", isFallback ? "Запрос к модели (fallback)" : "Запрос к модели", details: "\(config.baseURL) / \(config.model), \(payloadInfo.debugDesc)")
 
         let task = session.dataTask(with: request) { [weak self] data, response, error in
+            if requestHandle.isCancelled { return }
             if let error {
                 if (error as NSError).code == NSURLErrorCancelled {
                     AppLogger.shared.info("AI", "Запрос к модели отменён пользователем")
@@ -751,7 +905,7 @@ final class AIService {
                 if let backup = AIProviderStore.shared.failoverConfig, backup.baseURL != config.baseURL || backup.model != config.model {
                     if self?.shouldTriggerFailover(for: aiError) == true {
                         AppLogger.shared.warn("AI", "Основной провайдер недоступен (тайм-аут/сеть), переключение на резервный (Failover)", details: "\(backup.baseURL) / \(backup.model)")
-                        _ = self?.chat(messages: messages, using: backup, promptLength: promptLength, completion: completion)
+                        _ = self?.chat(messages: messages, using: backup, promptLength: promptLength, timeout: timeout, handle: requestHandle, completion: completion)
                         return
                     }
                 }
@@ -774,7 +928,9 @@ final class AIService {
                         messages: messages,
                         using: config,
                         promptLength: promptLength,
+                        timeout: timeout,
                         isFallback: true,
+                        handle: requestHandle,
                         completion: completion
                     )
                     return
@@ -785,7 +941,7 @@ final class AIService {
                 if let backup = AIProviderStore.shared.failoverConfig, backup.baseURL != config.baseURL || backup.model != config.model {
                     if self?.shouldTriggerFailover(for: httpErr) == true {
                         AppLogger.shared.warn("AI", "Сбой основного провайдера (\(http.statusCode)), переключение на резервный (Failover)", details: "\(backup.baseURL) / \(backup.model)")
-                        _ = self?.chat(messages: messages, using: backup, promptLength: promptLength, completion: completion)
+                        _ = self?.chat(messages: messages, using: backup, promptLength: promptLength, timeout: timeout, handle: requestHandle, completion: completion)
                         return
                     }
                 }
@@ -807,8 +963,9 @@ final class AIService {
             }
             completion(.success(content))
         }
+        requestHandle.bind(task)
         task.resume()
-        return task
+        return requestHandle
     }
 
     private func shouldTriggerFailover(for error: AIError) -> Bool {
@@ -835,7 +992,6 @@ final class AIService {
         if !config.apiKey.isEmpty {
             request.setValue("Bearer \(config.apiKey)", forHTTPHeaderField: "Authorization")
         }
-        addProxyHeaders(&request, config: config)
         session.dataTask(with: request) { [weak self] data, response, error in
             if let error {
                 completion(.failure(.network(error.localizedDescription)))
@@ -870,7 +1026,6 @@ final class AIService {
         if !config.apiKey.isEmpty {
             request.setValue("Bearer \(config.apiKey)", forHTTPHeaderField: "Authorization")
         }
-        addProxyHeaders(&request, config: config)
 
         let testPayload: [String: Any] = [
             "model": config.model.isEmpty ? "default" : config.model,
@@ -908,7 +1063,6 @@ final class AIService {
         if !config.apiKey.isEmpty {
             request.setValue("Bearer \(config.apiKey)", forHTTPHeaderField: "Authorization")
         }
-        addProxyHeaders(&request, config: config)
         session.dataTask(with: request) { data, response, error in
             if let error {
                 completion(.failure(.network(error.localizedDescription)))
@@ -935,15 +1089,6 @@ final class AIService {
 
     private func url(_ base: String, path: String) -> URL? {
         URL(string: "\(base.trimmingCharacters(in: CharacterSet(charactersIn: "/ ")))/\(path)")
-    }
-
-    private func addProxyHeaders(_ request: inout URLRequest, config: AIProviderConfig) {
-        guard config.isProxy else { return }
-        request.setValue(Telemetry.shared.deviceID, forHTTPHeaderField: "X-Device-ID")
-        if let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String {
-            request.setValue(version, forHTTPHeaderField: "X-App-Version")
-        }
-        request.setValue(ProcessInfo.processInfo.operatingSystemVersionString, forHTTPHeaderField: "X-OS-Version")
     }
 
     static func extractError(from data: Data) -> String? {

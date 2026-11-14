@@ -21,12 +21,35 @@ struct NoteSelection: Equatable {
 }
 
 struct DateFormattingHelper {
-    private static let inputFormatter: DateFormatter = { let df = DateFormatter(); df.dateFormat = "dd.MM.yyyy"; return df }()
-    private static let outputFormatter: DateFormatter = { let df = DateFormatter(); df.locale = Locale.current; df.dateFormat = "d MMMM yyyy"; return df }()
+    private static let lock = NSLock()
+    private static let inputFormatter: DateFormatter = {
+        let df = DateFormatter()
+        df.locale = Locale(identifier: "en_US_POSIX")
+        df.dateFormat = "dd.MM.yyyy"
+        return df
+    }()
+    private static var cachedLocaleID: String = ""
+    private static var cachedOutputFormatter: DateFormatter = {
+        let df = DateFormatter()
+        df.dateFormat = "d MMMM yyyy"
+        return df
+    }()
+
     static func formatRussianDate(_ dateStr: String) -> (date: String, time: String) {
         let parts = dateStr.components(separatedBy: ", ")
-        let datePart = parts.first ?? dateStr; let timePart = parts.count > 1 ? parts[1] : ""
-        if let dateObj = inputFormatter.date(from: datePart) { return (outputFormatter.string(from: dateObj), timePart) }
+        let datePart = parts.first ?? dateStr
+        let timePart = parts.count > 1 ? parts[1] : ""
+        let targetLocale = LanguageSettings.shared.currentLocale
+
+        lock.lock()
+        defer { lock.unlock() }
+        if cachedLocaleID != targetLocale.identifier {
+            cachedLocaleID = targetLocale.identifier
+            cachedOutputFormatter.locale = targetLocale
+        }
+        if let dateObj = inputFormatter.date(from: datePart) {
+            return (cachedOutputFormatter.string(from: dateObj), timePart)
+        }
         return (datePart, timePart)
     }
 }
@@ -562,21 +585,12 @@ struct SyncedTextView: NSViewRepresentable {
                         let gapAEnd = a - 1
                         let gapBStart = lastB + 1
                         let gapBEnd = b - 1
-                        if gapAStart <= gapAEnd {
-                            if gapBStart <= gapBEnd {
-                                for curA in gapAStart...gapAEnd {
-                                    let ratio = Double(curA - gapAStart) / Double(max(1, gapAEnd - gapAStart + 1))
-                                    let targetB = gapBStart + Int(ratio * Double(gapBEnd - gapBStart + 1))
-                                    let clampedB = min(max(targetB, gapBStart), gapBEnd)
-                                    ranges[curA] = tokens[clampedB]
-                                }
-                            } else {
-                                let fallbackB = b < tokens.count ? b : max(0, lastB)
-                                if fallbackB >= 0 && fallbackB < tokens.count {
-                                    for curA in gapAStart...gapAEnd {
-                                        ranges[curA] = tokens[fallbackB]
-                                    }
-                                }
+                        if gapAStart <= gapAEnd && gapBStart <= gapBEnd {
+                            for curA in gapAStart...gapAEnd {
+                                let ratio = Double(curA - gapAStart) / Double(max(1, gapAEnd - gapAStart + 1))
+                                let targetB = gapBStart + Int(ratio * Double(gapBEnd - gapBStart + 1))
+                                let clampedB = min(max(targetB, gapBStart), gapBEnd)
+                                ranges[curA] = tokens[clampedB]
                             }
                         }
                         lastB = b
@@ -589,20 +603,13 @@ struct SyncedTextView: NSViewRepresentable {
                 let gapAEnd = n - 1
                 let gapBStart = lastB + 1
                 let gapBEnd = tokens.count - 1
-                for curA in gapAStart...gapAEnd {
-                    if gapBStart <= gapBEnd {
+                if gapBStart <= gapBEnd {
+                    for curA in gapAStart...gapAEnd {
                         let ratio = Double(curA - gapAStart) / Double(max(1, gapAEnd - gapAStart + 1))
                         let targetB = gapBStart + Int(ratio * Double(gapBEnd - gapBStart + 1))
                         let clampedB = min(max(targetB, gapBStart), gapBEnd)
                         ranges[curA] = tokens[clampedB]
-                    } else if lastB >= 0 && lastB < tokens.count {
-                        ranges[curA] = tokens[lastB]
                     }
-                }
-            }
-            for a in 0..<n {
-                if ranges[a].location == NSNotFound, let firstValid = ranges.first(where: { $0.location != NSNotFound }) {
-                    ranges[a] = firstValid
                 }
             }
         }
@@ -612,6 +619,7 @@ struct SyncedTextView: NSViewRepresentable {
 struct StagePickerMenuButton: View {
     @Binding var textStageMode: DisplayedTextStage
     var note: TranscriptionItem? = nil
+    @ObservedObject private var language = LanguageSettings.shared
 
     private var hasChanges: Bool {
         guard let note = note, let raw = note.rawText else { return false }
@@ -620,13 +628,13 @@ struct StagePickerMenuButton: View {
 
     var body: some View {
         UIDropdownMenu(items: [
-            .action((textStageMode == .final ? "✓ " : "  ") + String(localized: "Итоговый текст")) {
+            .action((textStageMode == .final ? "✓ " : "  ") + L10n.tr("Итоговый текст")) {
                 withAnimation(.easeInOut(duration: 0.15)) { textStageMode = .final }
             },
-            .action((textStageMode == .terms ? "✓ " : "  ") + String(localized: "После IT-словаря")) {
+            .action((textStageMode == .terms ? "✓ " : "  ") + L10n.tr("После IT-словаря")) {
                 withAnimation(.easeInOut(duration: 0.15)) { textStageMode = .terms }
             },
-            .action((textStageMode == .raw ? "✓ " : "  ") + String(localized: "Сырой ASR (до обработки)")) {
+            .action((textStageMode == .raw ? "✓ " : "  ") + L10n.tr("Сырой ASR (до обработки)")) {
                 withAnimation(.easeInOut(duration: 0.15)) { textStageMode = .raw }
             }
         ]) {
@@ -647,7 +655,7 @@ struct StagePickerMenuButton: View {
             .overlay(RoundedRectangle(cornerRadius: 18).stroke(textStageMode == .final ? Color.uiHairline : Color.orange.opacity(0.4), lineWidth: 1))
         }
         .fixedSize(horizontal: true, vertical: false)
-        .help(hasChanges ? "Просмотр исходного сырого текста ASR и промежуточных этапов обработки" : "Сырой текст ASR и результат обработки идентичны")
+        .help(hasChanges ? LocalizedStringKey("Просмотр исходного сырого текста ASR и промежуточных этапов обработки") : LocalizedStringKey("Сырой текст ASR и результат обработки идентичны"))
     }
 }
 
@@ -714,6 +722,7 @@ struct ContentView: View {
     @ObservedObject var audioCapture = AudioCapture.shared
     @ObservedObject var permissions = PermissionManager.shared
     @ObservedObject var promptStore = PromptStore.shared
+    @ObservedObject var language = LanguageSettings.shared
     
     @State private var isSplashFinished = false
     @State private var currentTab: MainTab = .history
@@ -801,7 +810,7 @@ struct ContentView: View {
             }
         }
         .sheet(isPresented: $showAboutSheet) {
-            AboutView()
+            AboutView().withAppLocale()
         }
         .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("OpenAboutModal"))) { _ in
             showAboutSheet = true
@@ -1002,7 +1011,7 @@ struct ContentView: View {
                         .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.uiHairline, lineWidth: 1))
                 }
                 .buttonStyle(TactileButtonStyle())
-                .help(String(localized: "Новая заметка"))
+                .help(LocalizedStringKey("Новая заметка"))
             }.padding(.horizontal, 12).padding(.bottom, 8)
             ScrollViewReader { proxy in
                 ScrollView {
@@ -1111,14 +1120,14 @@ struct ContentView: View {
                             let diff = diffRanges(for: selected)
                             HStack(spacing: 8) {
                                 if selected.isAITransform == true || selected.duration == "AI" {
-                                    MetadataPill(icon: "sparkles", text: String(localized: "History.AI"), color: Color(hex: "#A855F7"))
+                                    MetadataPill(icon: "sparkles", text: L10n.tr("History.AI"), color: Color(hex: "#A855F7"))
                                 } else {
                                     MetadataPill(icon: "waveform", text: selected.duration, color: Color.blue)
                                     MetadataPill(icon: "bolt.fill", text: selected.formattedSpeedup, color: Color.orange)
                                 }
-                                MetadataPill(icon: "text.alignleft", text: "\(selected.text.count) " + String(localized: "зн"), color: Color(hex: "#10B981"))
+                                MetadataPill(icon: "text.alignleft", text: "\(selected.text.count) " + L10n.tr("зн"), color: Color(hex: "#10B981"))
                                 let readMin = max(1, selected.text.count / 900)
-                                MetadataPill(icon: "book.fill", text: "~\(readMin) " + String(localized: "мин чтения"), color: Color.purple)
+                                MetadataPill(icon: "book.fill", text: "~\(readMin) " + L10n.tr("мин чтения"), color: Color.purple)
 
                                 if !diff.itRanges.isEmpty {
                                     HStack(spacing: 4) {
@@ -1169,7 +1178,7 @@ struct ContentView: View {
                                         .contentShape(Rectangle())
                                     }
                                     .buttonStyle(.plain)
-                                    .help(String(localized: "Поиск по стенограмме (⌘F)"))
+                                    .help(LocalizedStringKey("Поиск по стенограмме (⌘F)"))
                                 }
                             }
                             
@@ -1186,11 +1195,11 @@ struct ContentView: View {
                                         .foregroundColor(isIdentical ? .uiMidGray : .orange)
                                     Text(isIdentical
                                          ? (textStageMode == .raw
-                                            ? String(localized: "Просмотр: Сырой текст голосовой модели (совпадает с итоговым, замен не было)")
-                                            : String(localized: "Просмотр: Текст после словаря (совпадает с итоговым, замен не было)"))
+                                            ? LocalizedStringKey("Просмотр: Сырой текст голосовой модели (совпадает с итоговым, замен не было)")
+                                            : LocalizedStringKey("Просмотр: Текст после словаря (совпадает с итоговым, замен не было)"))
                                          : (textStageMode == .raw
-                                            ? String(localized: "Просмотр: Сырой текст голосовой модели (до обработки словарём и ИИ)")
-                                            : String(localized: "Просмотр: Текст после словаря IT-терминов (до обработки ИИ-шаблоном)")))
+                                            ? LocalizedStringKey("Просмотр: Сырой текст голосовой модели (до обработки словарём и ИИ)")
+                                            : LocalizedStringKey("Просмотр: Текст после словаря IT-терминов (до обработки ИИ-шаблоном)")))
                                         .font(UIStyleFont.body(size: 12, weight: .medium))
                                         .foregroundColor(isIdentical ? .uiMidGray : .uiInk)
                                     Spacer()
@@ -1281,7 +1290,7 @@ struct ContentView: View {
 
                                 HeroActionRow(
                                     icon: "video.fill",
-                                    badge: String(localized: "⌘ + O"),
+                                    badge: L10n.tr("⌘ + O"),
                                     title: "Расшифровать файл",
                                     subtitle: "Созвоны Zoom, Телемост и медиафайлы: MP3, MP4, WebM"
                                 ) {
@@ -1293,34 +1302,17 @@ struct ContentView: View {
                                     .font(UIStyleFont.body(size: 11, weight: .medium))
                                     .foregroundColor(.uiMidGray)
 
-                                Button(action: openAccountSettings) {
-                                    HStack(spacing: 12) {
-                                        ZStack {
-                                            RoundedRectangle(cornerRadius: 8, style: .continuous).fill(Color.uiCanvas)
-                                                .frame(width: 34, height: 34)
-                                            Image(systemName: "icloud.fill").font(.system(size: 15, weight: .semibold)).foregroundColor(.uiInk)
-                                        }
-                                        VStack(alignment: .leading, spacing: 1) {
-                                            Text("Голосок+").font(UIStyleFont.display(size: 13, weight: .semibold)).foregroundColor(.uiInk)
-                                            Text("Облачный ИИ помогает редактировать заметки. Расшифровка — всегда локально").font(UIStyleFont.body(size: 11, weight: .regular)).foregroundColor(.uiMidGray)
-                                        }
-                                        Spacer(minLength: 8)
-                                        Image(systemName: "chevron.right").font(.system(size: 10, weight: .bold)).foregroundColor(.uiMidGray)
-                                    }
-                                    .padding(12)
-                                    .background(Color.uiSidebar)
-                                    .cornerRadius(14)
-                                    .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color.uiHairline, lineWidth: 1))
-                                    .contentShape(Rectangle())
-                                }
-                                .buttonStyle(TactileButtonStyle())
-
-                                HStack(spacing: 6) {
+                                HStack(spacing: 8) {
                                     Image(systemName: "arrow.down.doc").font(.system(size: 11, weight: .medium)).foregroundColor(.uiMidGray)
                                     Text("Перетащите файл в окно программы — расшифровка начнётся автоматически")
                                         .font(UIStyleFont.body(size: 11, weight: .regular))
                                         .foregroundColor(.uiMidGray)
                                 }
+                                .padding(12)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .background(Color.uiSidebar)
+                                .cornerRadius(14)
+                                .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color.uiHairline, lineWidth: 1))
                             }
                         }.padding(12).frame(maxWidth: .infinity, maxHeight: .infinity)
                     }
@@ -1375,12 +1367,13 @@ struct ContentView: View {
                 }
                 audioCapture.markAsRead(id: newID)
             }
+            .withAppLocale()
         }
         .sheet(isPresented: $showPromptManager) {
-            PromptManagerView()
+            PromptManagerView().withAppLocale()
         }
         .sheet(isPresented: $showCreatePrompt) {
-            PromptEditorView(prompt: nil)
+            PromptEditorView(prompt: nil).withAppLocale()
         }
         .alert("Удалить запись?", isPresented: $showingDeleteAlert) {
             Button("Отмена", role: .cancel) { }
@@ -1427,7 +1420,7 @@ struct ContentView: View {
                 }
                 .buttonStyle(.plain)
                 .disabled(count == 0)
-                .help(String(localized: "Предыдущее совпадение (⇧⌘G)"))
+                .help(LocalizedStringKey("Предыдущее совпадение (⇧⌘G)"))
                 Button(action: { goToMatch(offset: 1) }) {
                     Image(systemName: "chevron.down")
                         .font(.system(size: 10, weight: .bold))
@@ -1436,7 +1429,7 @@ struct ContentView: View {
                 }
                 .buttonStyle(.plain)
                 .disabled(count == 0)
-                .help(String(localized: "Следующее совпадение (⌘G)"))
+                .help(LocalizedStringKey("Следующее совпадение (⌘G)"))
             }
             Button(action: closeSearchBar) {
                 Image(systemName: "xmark.circle.fill")
@@ -1445,7 +1438,7 @@ struct ContentView: View {
                     .frame(width: 20, height: 20)
             }
             .buttonStyle(.plain)
-            .help(String(localized: "Закрыть поиск (Esc)"))
+            .help(LocalizedStringKey("Закрыть поиск (Esc)"))
         }
         .padding(8)
         .background(Color.uiCanvas)
@@ -1548,7 +1541,10 @@ struct ContentView: View {
         editSaveWorkItem?.cancel()
         let snapshot = editableText
         let work = DispatchWorkItem { [weak audioCapture] in
-            audioCapture?.replaceNoteText(id: id, text: snapshot)
+            guard let audioCapture,
+                  let current = audioCapture.history.first(where: { $0.id == id }),
+                  current.text != snapshot else { return }
+            audioCapture.replaceNoteText(id: id, text: snapshot, rawText: snapshot, termsText: snapshot)
         }
         editSaveWorkItem = work
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.4, execute: work)
@@ -1558,7 +1554,11 @@ struct ContentView: View {
         guard isEditing, let id = editingItemID else { return }
         editSaveWorkItem?.cancel()
         editSaveWorkItem = nil
-        audioCapture.replaceNoteText(id: id, text: editableText)
+        let newText = editableText.trimmingCharacters(in: .whitespacesAndNewlines)
+        if let current = audioCapture.history.first(where: { $0.id == id }), current.text != newText {
+            audioCapture.replaceNoteText(id: id, text: newText, rawText: newText, termsText: newText)
+        }
+        textStageMode = .final
     }
 
     // MARK: - AI-обработка выделенного фрагмента
@@ -1603,14 +1603,6 @@ struct ContentView: View {
             noteText: sel.selectedText,
             scope: .selection(range: sel.range, fullText: sel.fullText)
         )
-    }
-
-    private func openAccountSettings() {
-        currentTab = .settings
-        searchText = ""
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
-            NotificationCenter.default.post(name: NSNotification.Name("ScrollToAccount"), object: nil)
-        }
     }
 
     private func createNote() {
@@ -1906,6 +1898,7 @@ struct HistorySkeletonCard: View {
 struct HistoryCard: View {
     let item: TranscriptionItem
     let isSelected: Bool
+    @ObservedObject private var language = LanguageSettings.shared
     
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
