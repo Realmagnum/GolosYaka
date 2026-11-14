@@ -16,7 +16,7 @@ final class AISelectionManager {
     static let shared = AISelectionManager()
 
     private var isBusy = false
-    private var currentTask: URLSessionDataTask?
+    private var currentTask: AICancelableRequest?
     private var escMonitor: Any?
 
     private init() {}
@@ -31,14 +31,14 @@ final class AISelectionManager {
         // Проверка прав Универсального доступа (Accessibility) для чтения и отправки нажатий клавиш
         guard PermissionManager.shared.isAccessibilityGranted else {
             AppLogger.shared.warn("AISelection", "Отсутствуют права Accessibility")
-            AudioCapture.shared.cancelAIProcessing(warning: String(localized: "Включите доступ в Настройках macOS"))
+            AudioCapture.shared.cancelAIProcessing(warning: .key("Включите доступ в Настройках macOS"))
             return
         }
 
         // Проверка настройки ИИ-провайдера (Ollama, llama-server или облачные API)
         guard AIProviderStore.shared.isConfigured else {
             AppLogger.shared.warn("AISelection", "ИИ-провайдер не настроен")
-            AudioCapture.shared.cancelAIProcessing(warning: String(localized: "Настройте ИИ-провайдер в Голоске"))
+            AudioCapture.shared.cancelAIProcessing(warning: .key("Настройте ИИ-провайдер в Голоске"))
             return
         }
 
@@ -57,7 +57,7 @@ final class AISelectionManager {
 
             guard let text = extractedText, !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
                 AppLogger.shared.info("AISelection", "Текст не выделен или пуст")
-                AudioCapture.shared.cancelAIProcessing(warning: String(localized: "Сначала выделите текст"))
+                AudioCapture.shared.cancelAIProcessing(warning: .key("Сначала выделите текст"))
                 return
             }
 
@@ -150,7 +150,7 @@ final class AISelectionManager {
     private func presentPromptPalette(for text: String, targetApp: NSRunningApplication) {
         let templates = PromptStore.shared.actionTemplates
         guard !templates.isEmpty else {
-            AudioCapture.shared.cancelAIProcessing(warning: String(localized: "Список промптов пуст"))
+            AudioCapture.shared.cancelAIProcessing(warning: .key("Список промптов пуст"))
             return
         }
 
@@ -177,7 +177,7 @@ final class AISelectionManager {
         AppLogger.shared.info("AISelection", "Применение шаблона", details: "\(template.title) для \(text.count) символов")
 
         // Запуск красивого плавающего оверлея Голоска
-        AudioCapture.shared.startAIProcessing(status: String(localized: "ИИ-обработка..."))
+        AudioCapture.shared.startAIProcessing(status: "ИИ-обработка...")
 
         // Подключаем монитор Esc для возможности отмены длинной генерации
         installEscMonitor()
@@ -198,7 +198,7 @@ final class AISelectionManager {
                 case .success(let generatedText):
                     let clean = generatedText.trimmingCharacters(in: .whitespacesAndNewlines)
                     guard !clean.isEmpty else {
-                        AudioCapture.shared.cancelAIProcessing(warning: String(localized: "Пустой ответ от модели"))
+                        AudioCapture.shared.cancelAIProcessing(warning: .key("Пустой ответ от модели"))
                         return
                     }
 
@@ -211,7 +211,7 @@ final class AISelectionManager {
                         return
                     }
                     AppLogger.shared.error("AISelection", "Ошибка инференса LLM", details: error.localizedDescription)
-                    AudioCapture.shared.cancelAIProcessing(warning: String(localized: "Ошибка ИИ: \(error.localizedDescription)"))
+                    AudioCapture.shared.cancelAIProcessing(warning: .formatted(key: "Ошибка ИИ: %@", arg: error.localizedDescription))
                 }
             }
         }
@@ -255,7 +255,7 @@ final class AISelectionManager {
             let source = CGEventSource(stateID: .combinedSessionState)
             guard let keyDown = CGEvent(keyboardEventSource: source, virtualKey: 0x09, keyDown: true), // 0x09 = 'V'
                   let keyUp = CGEvent(keyboardEventSource: source, virtualKey: 0x09, keyDown: false) else {
-                AudioCapture.shared.cancelAIProcessing(warning: String(localized: "Не удалось эмулировать Cmd+V"))
+                AudioCapture.shared.cancelAIProcessing(warning: .key("Не удалось эмулировать Cmd+V"))
                 return
             }
 

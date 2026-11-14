@@ -20,10 +20,10 @@ struct PromptManagerView: View {
         .frame(minWidth: 480, idealWidth: 520, minHeight: 420, idealHeight: 560)
         .background(Color.uiPaper)
         .sheet(item: $editing) { prompt in
-            PromptEditorView(prompt: prompt)
+            PromptEditorView(prompt: prompt).withAppLocale()
         }
         .sheet(isPresented: $creating) {
-            PromptEditorView(prompt: nil)
+            PromptEditorView(prompt: nil).withAppLocale()
         }
     }
 

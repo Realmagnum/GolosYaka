@@ -212,13 +212,25 @@ private final class DropdownPresenter {
     private var globalClick: Any?
     private var keyMonitor: Any?
     private var onClose: (() -> Void)?
+    private var langObserver: NSObjectProtocol?
+
+    private init() {
+        langObserver = NotificationCenter.default.addObserver(
+            forName: .appLanguageDidChange,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            self?.close()
+        }
+    }
 
     func present(anchorView: NSView?, content: AnyView, contentWidth: CGFloat, onClose: @escaping () -> Void) {
         close()
         self.onClose = onClose
 
         let pw = max(160, contentWidth)
-        let controller = NSHostingController(rootView: content)
+        let localizedContent = AnyView(content.withAppLocale())
+        let controller = NSHostingController(rootView: localizedContent)
         let measured = controller.sizeThatFits(in: NSSize(width: pw, height: .greatestFiniteMagnitude))
         let ph = max(measured.height, 8)
         controller.view.frame = NSRect(x: 0, y: 0, width: pw, height: ph)

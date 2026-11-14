@@ -34,46 +34,48 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 struct GolosokApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     @ObservedObject var audioCapture = AudioCapture.shared
+    @ObservedObject var language = LanguageSettings.shared
 
     init() {
         KeyStore.preloadAllIfNeeded()
-        LanguageSettings.shared.apply()
+        LanguageSettings.shared.apply(notify: false)
     }
     
     var body: some Scene {
         WindowGroup {
             ContentView()
+                .withAppLocale()
                 .frame(minWidth: 990, minHeight: 710)
         }
         
         .commands {
             CommandGroup(replacing: .appInfo) {
-                Button("О программе") {
+                Button(L10n.tr("О программе")) {
                     NSApp.activate(ignoringOtherApps: true)
                     NotificationCenter.default.post(name: NSNotification.Name("OpenAboutModal"), object: nil)
                 }
             }
 
             CommandGroup(replacing: .newItem) {
-                Button("Открыть аудиофайл...") {
+                Button(L10n.tr("Открыть аудиофайл...")) {
                     AudioCapture.shared.importAndTranscribeFile()
                 }
                 .keyboardShortcut("o", modifiers: .command)
             }
 
             CommandGroup(after: .textEditing) {
-                Button("Найти в стенограмме…") {
+                Button(L10n.tr("Найти в стенограмме…")) {
                     NSApp.activate(ignoringOtherApps: true)
                     NotificationCenter.default.post(name: NSNotification.Name("ToggleTranscriptSearch"), object: nil)
                 }
                 .keyboardShortcut("f", modifiers: .command)
 
-                Button("Найти далее") {
+                Button(L10n.tr("Найти далее")) {
                     NotificationCenter.default.post(name: NSNotification.Name("FindNextInTranscript"), object: nil)
                 }
                 .keyboardShortcut("g", modifiers: .command)
 
-                Button("Найти ранее") {
+                Button(L10n.tr("Найти ранее")) {
                     NotificationCenter.default.post(name: NSNotification.Name("FindPreviousInTranscript"), object: nil)
                 }
                 .keyboardShortcut("g", modifiers: [.command, .shift])
@@ -82,8 +84,8 @@ struct GolosokApp: App {
 
         .defaultSize(width: 990, height: 710)
         
-        MenuBarExtra("Голосок", systemImage: "waveform") {
-            Button("Скопировать последнюю запись") {
+        MenuBarExtra(L10n.tr("Голосок"), systemImage: "waveform") {
+            Button(L10n.tr("Скопировать последнюю запись")) {
                 if let last = audioCapture.history.first?.text {
                     NSPasteboard.general.clearContents()
                     NSPasteboard.general.setString(last, forType: .string)
@@ -93,11 +95,11 @@ struct GolosokApp: App {
             
             Divider()
             
-            Button("Транскрибировать аудиофайл...") {
+            Button(L10n.tr("Транскрибировать аудиофайл...")) {
                 AudioCapture.shared.importAndTranscribeFile()
             }
             
-            Button("Развернуть Голосок") {
+            Button(L10n.tr("Развернуть Голосок")) {
                 NSApp.activate(ignoringOtherApps: true)
                 if let window = NSApplication.shared.windows.first {
                     window.makeKeyAndOrderFront(nil)
@@ -106,7 +108,7 @@ struct GolosokApp: App {
             
             Divider()
             
-            Button("Завершить") { NSApplication.shared.terminate(nil) }
+            Button(L10n.tr("Завершить")) { NSApplication.shared.terminate(nil) }
         }
     }
 }

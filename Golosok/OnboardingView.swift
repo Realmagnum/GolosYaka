@@ -55,7 +55,7 @@ struct OnboardingView: View {
                             Spacer()
                             
                             if permissions.isMicGranted {
-                                UIBadge(text: String(localized: "Готово"))
+                                UIBadge(text: "Готово")
                             } else {
                                 UIPrimaryButton(title: "Разрешить") {
                                     permissions.requestMicPermission()
@@ -88,7 +88,7 @@ struct OnboardingView: View {
                             Spacer()
                             
                             if permissions.isAccessibilityGranted {
-                                UIBadge(text: String(localized: "Готово"))
+                                UIBadge(text: "Готово")
                             } else {
                                 UIOutlineButton(title: "Включить") {
                                     permissions.requestAccessibilityPermission()

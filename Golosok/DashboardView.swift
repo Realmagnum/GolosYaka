@@ -47,9 +47,9 @@ struct DashboardCalculator: Equatable {
     }()
     
     static var empty: DashboardCalculator {
-        let daysLabels = [String(localized: "ПН"), String(localized: "ВТ"), String(localized: "СР"), String(localized: "ЧТ"), String(localized: "ПТ"), String(localized: "СБ"), String(localized: "ВС")]
+        let daysLabels = ["ПН", "ВТ", "СР", "ЧТ", "ПТ", "СБ", "ВС"]
         return DashboardCalculator(
-            hoursSaved: "0.00", aiPower: "35.0x", levelName: String(localized: "НОВИЧОК"), a4Pages: "0", peakActivity: String(localized: "НЕТ ДАННЫХ"),
+            hoursSaved: "0.00", aiPower: "35.0x", levelName: "НОВИЧОК", a4Pages: "0", peakActivity: "НЕТ ДАННЫХ",
             wpm: 0, totalMinutes: "0.0", totalNotes: 0, avgLength: 0,
             weeklyTrend: daysLabels.map { DayTrendStat(day: $0, count: 0, chars: 0) },
             timeOfDay: DashboardCalculator.emptyTimeOfDay,
@@ -59,12 +59,12 @@ struct DashboardCalculator: Equatable {
             activity: [],
             savedTrend: [],
             recentNotes: [],
-            levelProgress: LevelProgress(current: 0, nextThreshold: 6, nextLevel: String(localized: "ПОЛЬЗОВАТЕЛЬ"), isMaxed: false)
+            levelProgress: LevelProgress(current: 0, nextThreshold: 6, nextLevel: "ПОЛЬЗОВАТЕЛЬ", isMaxed: false)
         )
     }
 
     static var emptyTimeOfDay: [TimeOfDayStat] {
-        [String(localized: "УТРО"), String(localized: "ДЕНЬ"), String(localized: "ВЕЧЕР"), String(localized: "НОЧЬ")]
+        ["УТРО", "ДЕНЬ", "ВЕЧЕР", "НОЧЬ"]
             .map { TimeOfDayStat(label: $0, count: 0) }
     }
 
@@ -80,7 +80,7 @@ struct DashboardCalculator: Equatable {
     ]
     
     static func calculate(from history: [TranscriptionItem], range: StatsRange = .all) -> DashboardCalculator {
-        let daysLabels = [String(localized: "ПН"), String(localized: "ВТ"), String(localized: "СР"), String(localized: "ЧТ"), String(localized: "ПТ"), String(localized: "СБ"), String(localized: "ВС")]
+        let daysLabels = ["ПН", "ВТ", "СР", "ЧТ", "ПТ", "СБ", "ВС"]
         
         if history.isEmpty { return empty }
         
@@ -154,21 +154,21 @@ struct DashboardCalculator: Equatable {
         
         let level: String
         switch count {
-        case 0...5:       level = String(localized: "НОВИЧОК")
-        case 6...20:      level = String(localized: "ПОЛЬЗОВАТЕЛЬ")
-        case 21...50:     level = String(localized: "ЛЮБИТЕЛЬ")
-        case 51...100:    level = String(localized: "ОПЫТНЫЙ")
-        case 101...250:   level = String(localized: "СПЕЦИАЛИСТ")
-        case 251...500:   level = String(localized: "ЭКСПЕРТ")
-        case 501...1000:  level = String(localized: "ПРОФИ")
-        case 1001...2500: level = String(localized: "МАСТЕР")
-        case 2501...5000: level = String(localized: "ВИРТУОЗ")
-        default:          level = String(localized: "ЛЕГЕНДА")
+        case 0...5:       level = "НОВИЧОК"
+        case 6...20:      level = "ПОЛЬЗОВАТЕЛЬ"
+        case 21...50:     level = "ЛЮБИТЕЛЬ"
+        case 51...100:    level = "ОПЫТНЫЙ"
+        case 101...250:   level = "СПЕЦИАЛИСТ"
+        case 251...500:   level = "ЭКСПЕРТ"
+        case 501...1000:  level = "ПРОФИ"
+        case 1001...2500: level = "МАСТЕР"
+        case 2501...5000: level = "ВИРТУОЗ"
+        default:          level = "ЛЕГЕНДА"
         }
         
         let peak: String
         let maxActivity = max(m, d, e, n)
-        if maxActivity == m { peak = String(localized: "УТРО") } else if maxActivity == d { peak = String(localized: "ДЕНЬ") } else if maxActivity == e { peak = String(localized: "ВЕЧЕР") } else { peak = String(localized: "НОЧЬ") }
+        if maxActivity == m { peak = "УТРО" } else if maxActivity == d { peak = "ДЕНЬ" } else if maxActivity == e { peak = "ВЕЧЕР" } else { peak = "НОЧЬ" }
         
         let totalMins = totalSecs / 60.0
         let savedHours = max(0.0, ((Double(totalChars) / 200.0) - totalMins) / 60.0)
@@ -176,7 +176,7 @@ struct DashboardCalculator: Equatable {
         let avgSpeedup = speedups.isEmpty ? 35.0 : (speedups.reduce(0, +) / Double(speedups.count))
 
         let trend = daysLabels.enumerated().map { DayTrendStat(day: $1, count: dayCounts[$0], chars: dayChars[$0]) }
-        let timeOfDay = [String(localized: "УТРО"), String(localized: "ДЕНЬ"), String(localized: "ВЕЧЕР"), String(localized: "НОЧЬ")]
+        let timeOfDay = ["УТРО", "ДЕНЬ", "ВЕЧЕР", "НОЧЬ"]
             .enumerated().map { TimeOfDayStat(label: $1, count: todRange[$0]) }
         let weekdayAggregate = daysLabels.enumerated().map { DayTrendStat(day: $1, count: weekdayCounts[$0], chars: 0) }
         let sizeHistogram = DashboardCalculator.sizeBucketLabels.enumerated().map { SizeBucketStat(label: $1, count: histCounts[$0]) }
@@ -201,9 +201,9 @@ struct DashboardCalculator: Equatable {
 
         let levelProgress: LevelProgress
         if let next = levelThresholds.first(where: { $0.0 > count }) {
-            levelProgress = LevelProgress(current: count, nextThreshold: next.0, nextLevel: NSLocalizedString(next.1, comment: ""), isMaxed: false)
+            levelProgress = LevelProgress(current: count, nextThreshold: next.0, nextLevel: next.1, isMaxed: false)
         } else {
-            levelProgress = LevelProgress(current: count, nextThreshold: count, nextLevel: NSLocalizedString("ЛЕГЕНДА", comment: ""), isMaxed: true)
+            levelProgress = LevelProgress(current: count, nextThreshold: count, nextLevel: "ЛЕГЕНДА", isMaxed: true)
         }
 
         return DashboardCalculator(
@@ -232,6 +232,7 @@ struct DashboardCalculator: Equatable {
 struct DashboardView: View {
     @ObservedObject var audioCapture = AudioCapture.shared
     @ObservedObject var techTerms = TechTermStore.shared
+    @ObservedObject var language = LanguageSettings.shared
     @State private var chartRange: StatsRange = .week
     @State private var stats: DashboardCalculator = DashboardCalculator.empty
     @State private var showingCandidatesSheet = false
@@ -257,7 +258,7 @@ struct DashboardView: View {
                             HStack(spacing: 5) {
                                 Image(systemName: "sparkles")
                                     .font(.system(size: 10, weight: .bold))
-                                Text(String(format: String(localized: "Термины: %lld"), Int64(techTerms.candidates.count)))
+                                Text(L10n.format("Термины: %lld", Int64(techTerms.candidates.count)))
                                     .font(UIStyleFont.body(size: 10, weight: .bold))
                             }
                             .foregroundColor(.white)
@@ -265,14 +266,15 @@ struct DashboardView: View {
                             .background(Color(hex: "#10B981")).cornerRadius(12)
                         }
                         .buttonStyle(.plain)
-                        .help("Просмотр и подтверждение новых кандидатов IT-терминов от ИИ")
+                        .help(LocalizedStringKey("Просмотр и подтверждение новых кандидатов IT-терминов от ИИ"))
                     }
 
                     if let update = audioCapture.updateInfo {
                         HStack(spacing: 6) {
                             if audioCapture.isDownloadingUpdate {
                                 ProgressView().scaleEffect(0.6)
-                                Text(audioCapture.updateProgressText.isEmpty ? LocalizedStringKey("Скачивание...") : LocalizedStringKey(audioCapture.updateProgressText))
+                                let progressText = audioCapture.updateProgressStatus == .idle ? L10n.tr("Скачивание...") : audioCapture.updateProgressStatus.localized
+                                Text(progressText)
                                     .font(UIStyleFont.body(size: 10, weight: .bold))
                                     .foregroundColor(.white)
                                 Button(action: { audioCapture.cancelUpdateDownload() }) {
@@ -282,7 +284,7 @@ struct DashboardView: View {
                                 Button(action: { audioCapture.downloadAndInstallUpdate() }) {
                                     HStack(spacing: 4) {
                                         Image(systemName: "arrow.down.circle.fill")
-                                        Text(String(format: String(localized: "Доступна %@"), update.codename))
+                                        Text(L10n.format("Доступна %@", update.codename))
                                     }
                                     .font(UIStyleFont.body(size: 10, weight: .bold))
                                     .foregroundColor(.white)
@@ -323,7 +325,7 @@ struct DashboardView: View {
                 .cornerRadius(24)
                 .overlay(RoundedRectangle(cornerRadius: 24).stroke(Color.uiHairline, lineWidth: 1))
                 
-                DashboardChartsSection(stats: stats, chartRange: $chartRange)
+                DashboardChartsSection(stats: stats, chartRange: $chartRange, languageRevision: language.revision)
                     .equatable()
             }
             .padding(20)
@@ -333,7 +335,7 @@ struct DashboardView: View {
         .onChange(of: audioCapture.history.count) { _ in apply() }
         .onChange(of: chartRange) { _ in apply() }
         .sheet(isPresented: $showingCandidatesSheet) {
-            TechTermCandidatesView()
+            TechTermCandidatesView().withAppLocale()
         }
     }
     
@@ -381,11 +383,12 @@ final class DashboardStatsStore: ObservableObject {
 struct DashboardChartsSection: View, Equatable {
     let stats: DashboardCalculator
     @Binding var chartRange: StatsRange
+    let languageRevision: Int
     @State private var trendMetric: TrendMetric = .notes
     @State private var revealed = false
     
     static func == (lhs: DashboardChartsSection, rhs: DashboardChartsSection) -> Bool {
-        lhs.stats == rhs.stats && lhs.chartRange == rhs.chartRange
+        lhs.stats == rhs.stats && lhs.chartRange == rhs.chartRange && lhs.languageRevision == rhs.languageRevision
     }
     
     var body: some View {
@@ -397,7 +400,7 @@ struct DashboardChartsSection: View, Equatable {
                     .tracking(1.2)
                     .foregroundColor(.uiMidGray)
                 Spacer()
-                UISegmented(selection: $chartRange, segments: StatsRange.allCases.map { UISegment(text: Text($0.title), value: $0) })
+                UISegmented(selection: $chartRange, segments: StatsRange.allCases.map { UISegment(text: Text($0.titleKey), value: $0) })
                 .frame(width: 240)
             }
             
@@ -443,7 +446,7 @@ struct DashboardChartsSection: View, Equatable {
                         AxisMarks(values: .automatic) { value in
                             AxisValueLabel() {
                                 if let str = value.as(String.self) {
-                                    Text(str).font(UIStyleFont.body(size: 11, weight: .semibold)).foregroundColor(.uiMidGray)
+                                    Text(LocalizedStringKey(str)).font(UIStyleFont.body(size: 11, weight: .semibold)).foregroundColor(.uiMidGray)
                                 }
                             }
                         }
@@ -476,7 +479,7 @@ struct DashboardChartsSection: View, Equatable {
                 StatCard(value: stats.totalMinutes, label: "НАГОВОРИЛИ (МИН)")
                 StatCard(value: stats.a4Pages, label: "СТРАНИЦ А4")
                 StatCard(value: "\(stats.wpm)", label: "WPM (ТЕМП)")
-                StatCard(value: stats.peakActivity, label: "ПИК АКТИВНОСТИ")
+                StatCard(value: stats.peakActivity, label: "ПИК АКТИВНОСТИ", isLocalizedValue: true)
             }
             
             // ФУТЕР
@@ -502,13 +505,21 @@ struct DashboardChartsSection: View, Equatable {
 struct StatCard: View {
     let value: String
     let label: LocalizedStringKey
+    var isLocalizedValue: Bool = false
     var body: some View {
         UICard {
             VStack(alignment: .leading, spacing: 6) {
-                Text(value)
-                    .font(UIStyleFont.display(size: 26, weight: .bold))
-                    .foregroundColor(.uiInk)
-                    .tracking(-0.5)
+                if isLocalizedValue {
+                    Text(LocalizedStringKey(value))
+                        .font(UIStyleFont.display(size: 26, weight: .bold))
+                        .foregroundColor(.uiInk)
+                        .tracking(-0.5)
+                } else {
+                    Text(value)
+                        .font(UIStyleFont.display(size: 26, weight: .bold))
+                        .foregroundColor(.uiInk)
+                        .tracking(-0.5)
+                }
                 Text(label)
                     .font(UIStyleFont.body(size: 10, weight: .bold))
                     .tracking(0.8)
