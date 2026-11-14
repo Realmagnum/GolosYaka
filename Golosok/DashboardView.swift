@@ -481,22 +481,6 @@ struct DashboardChartsSection: View, Equatable {
                 StatCard(value: "\(stats.wpm)", label: "WPM (ТЕМП)")
                 StatCard(value: stats.peakActivity, label: "ПИК АКТИВНОСТИ", isLocalizedValue: true)
             }
-            
-            // ФУТЕР
-            HStack {
-                Text("ГОЛОСОК ™2026")
-                    .font(UIStyleFont.body(size: 10, weight: .bold))
-                    .foregroundColor(Color.dynamic(light: "#ffffff", dark: "#0a0a0a"))
-                Spacer()
-                Text("Design by Kozak")
-                    .font(UIStyleFont.body(size: 10, weight: .regular))
-                    .foregroundColor(Color.dynamic(light: "#ffffff", dark: "#0a0a0a"))
-            }
-            .padding(.horizontal, 20)
-            .padding(.vertical, 14)
-            .background(Color.dynamic(light: "#0a0a0a", dark: "#ffffff"))
-            .cornerRadius(16)
-            .overlay(RoundedRectangle(cornerRadius: 16).stroke(Color.uiHairline, lineWidth: 1))
         }
         .onAppear { revealed = true }
     }
