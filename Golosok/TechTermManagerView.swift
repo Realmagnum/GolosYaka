@@ -196,38 +196,37 @@ struct TechTermManagerView: View {
                         .foregroundColor(.uiInk)
                 }
 
-                // Автообучение из ИИ с бейджем кандидатов
+                // Автообучение из ИИ
                 HStack(spacing: 8) {
                     Toggle("", isOn: $store.isAutoLearnEnabled)
                         .labelsHidden()
                         .toggleStyle(SwitchToggleStyle(tint: Color(hex: "#10B981")))
 
-                    HStack(spacing: 4) {
-                        Text("Автообучение из ИИ")
-                            .font(UIStyleFont.body(size: 12, weight: .regular))
-                            .foregroundColor(.uiMidGray)
-
-                        if !store.candidates.isEmpty {
-                            Button(action: { showingCandidatesSheet = true }) {
-                                HStack(spacing: 3) {
-                                    Circle()
-                                        .fill(Color.uiWarn)
-                                        .frame(width: 5, height: 5)
-                                    Text(L10n.format("%lld на проверке", Int64(store.candidates.count)))
-                                        .font(UIStyleFont.body(size: 10, weight: .semibold))
-                                        .foregroundColor(.uiWarn)
-                                }
-                                .padding(.vertical, 2)
-                                .padding(.horizontal, 6)
-                                .background(Color.uiWarn.opacity(0.12))
-                                .cornerRadius(8)
-                            }
-                            .buttonStyle(PlainButtonStyle())
-                        }
-                    }
+                    Text("Автообучение из ИИ")
+                        .font(UIStyleFont.body(size: 12, weight: .regular))
+                        .foregroundColor(.uiMidGray)
                 }
 
                 Spacer()
+
+                // Плашка кандидатов — справа, отдельно от переключателей
+                if !store.candidates.isEmpty {
+                    Button(action: { showingCandidatesSheet = true }) {
+                        HStack(spacing: 4) {
+                            Circle()
+                                .fill(Color.uiWarn)
+                                .frame(width: 5, height: 5)
+                            Text(L10n.format("%lld на проверке", Int64(store.candidates.count)))
+                                .font(UIStyleFont.body(size: 10, weight: .semibold))
+                                .foregroundColor(.uiWarn)
+                        }
+                        .padding(.vertical, 3)
+                        .padding(.horizontal, 7)
+                        .background(Color.uiWarn.opacity(0.12))
+                        .cornerRadius(8)
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                }
             }
 
             // Нижняя строка: счетчик и кнопки импорта/экспорта
