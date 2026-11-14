@@ -1206,38 +1206,6 @@
         }
       }
     },
-    "Автоматическая отправка анонимных метрик производительности": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Automatic sending of anonymous performance metrics"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Автоматическая отправка анонимных метрик производительности"
-          }
-        }
-      }
-    },
-    "Автоматическая отправка данных диагностики поможет совершенствовать продукт": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Automatic diagnostics data helps us improve the product"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Автоматическая отправка данных диагностики поможет совершенствовать продукт"
-          }
-        }
-      }
-    },
     "Автоматически открывать в строке меню": {
       "localizations": {
         "en": {
@@ -4280,6 +4248,22 @@
         }
       }
     },
+    "Обезличенные метрики: скорость, ошибки, версия ОС и модели. Без текста и аудио.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Anonymized metrics: speed, errors, OS and model versions. No text or audio."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Обезличенные метрики: скорость, ошибки, версия ОС и модели. Без текста и аудио."
+          }
+        }
+      }
+    },
     "Облако": {
       "localizations": {
         "en": {
@@ -5375,6 +5359,22 @@
         }
       }
     },
+    "Помогите улучшить продукт. Отправляются только обезличенные метрики — без текста, аудио и имён файлов.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Help improve the product. Only anonymized metrics are sent — no text, audio or file names."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Помогите улучшить продукт. Отправляются только обезличенные метрики — без текста, аудио и имён файлов."
+          }
+        }
+      }
+    },
     "После IT-словаря": {
       "localizations": {
         "en": {
@@ -5661,6 +5661,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "Просмотр исходного сырого текста ASR и промежуточных этапов обработки"
+          }
+        }
+      }
+    },
+    "Просмотр событий, предупреждений и ошибок приложения": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "View application events, warnings and errors"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Просмотр событий, предупреждений и ошибок приложения"
           }
         }
       }
@@ -6307,22 +6323,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "СТРАНИЦ А4"
-          }
-        }
-      }
-    },
-    "Сайт": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Website"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Сайт"
           }
         }
       }

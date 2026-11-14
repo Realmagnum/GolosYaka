@@ -45,23 +45,15 @@ struct AboutView: View {
             Divider().background(Color.uiHairline)
             
             // 4. КНОПКИ
-            VStack(spacing: 8) {
-                HStack(spacing: 8) {
-                    AboutLinkButton(title: "GitHub", icon: "terminal.fill") {
-                        openURL(URL(string: "https://github.com/Berliner187/Golosok")!)
-                    }
-                    AboutLinkButton(title: "Сайт", icon: "globe") {
-                        openURL(URL(string: "https://golosok.space")!)
-                    }
+            HStack(spacing: 8) {
+                AboutLinkButton(title: "GitHub", icon: "terminal.fill") {
+                    openURL(URL(string: "https://github.com/Berliner187/Golosok")!)
                 }
-                
-                HStack(spacing: 8) {
-                    AboutLinkButton(title: "Поддержка", icon: "envelope") {
-                        openURL(URL(string: "https://telegram.me/fancycode")!)
-                    }
-                    AboutLinkButton(title: "Релизы", icon: "doc.text") {
-                        openURL(URL(string: "https://github.com/Berliner187/Golosok/releases")!)
-                    }
+                AboutLinkButton(title: "Поддержка", icon: "envelope") {
+                    openURL(URL(string: "https://telegram.me/fancycode")!)
+                }
+                AboutLinkButton(title: "Релизы", icon: "doc.text") {
+                    openURL(URL(string: "https://github.com/Berliner187/Golosok/releases")!)
                 }
             }
             

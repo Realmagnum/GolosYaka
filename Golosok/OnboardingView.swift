@@ -108,7 +108,7 @@ struct OnboardingView: View {
                                 Text("Делиться аналитикой")
                                     .font(UIStyleFont.display(size: 14, weight: .medium))
                                     .foregroundColor(.uiInk)
-                                Text("Автоматическая отправка данных диагностики поможет совершенствовать продукт")
+                                Text("Помогите улучшить продукт. Отправляются только обезличенные метрики — без текста, аудио и имён файлов.")
                                     .font(UIStyleFont.body(size: 12, weight: .regular))
                                     .foregroundColor(.uiMidGray)
                             }

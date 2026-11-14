@@ -9,7 +9,6 @@ struct SettingsView: View {
     @ObservedObject var techTerms = TechTermStore.shared
     @ObservedObject var promptStore = PromptStore.shared
     @State private var showingClearHistoryAlert = false
-    @State private var showingAboutSheet = false
     @State private var showingLogsSheet = false
     @State private var showingTechTermsSheet = false
     @State private var showingAddInferenceSheet = false
@@ -126,7 +125,7 @@ struct SettingsView: View {
                                 Text("Делиться аналитикой")
                                     .font(UIStyleFont.body(size: 13, weight: .medium))
                                     .foregroundColor(.uiInk)
-                                Text("Автоматическая отправка анонимных метрик производительности")
+                                Text("Обезличенные метрики: скорость, ошибки, версия ОС и модели. Без текста и аудио.")
                                     .font(UIStyleFont.body(size: 11, weight: .regular))
                                     .foregroundColor(.uiMidGray)
                             }
@@ -244,6 +243,26 @@ struct SettingsView: View {
                                 if hotKey.isCapturingSelection { hotKey.endCaptureSelection() } else { hotKey.beginCaptureSelection() }
                             }
                         }
+
+                        Divider().background(Color.uiHairline)
+
+                        HStack {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Логи приложения")
+                                    .font(UIStyleFont.body(size: 13, weight: .medium))
+                                    .foregroundColor(.uiInk)
+                                Text("Просмотр событий, предупреждений и ошибок приложения")
+                                    .font(UIStyleFont.body(size: 11, weight: .regular))
+                                    .foregroundColor(.uiMidGray)
+                            }
+                            Spacer()
+                            UIOutlineButton(title: "Открыть") {
+                                showingLogsSheet = true
+                            }
+                        }
+                        .sheet(isPresented: $showingLogsSheet) {
+                            LogsView().withAppLocale()
+                        }
                     }
                 }
                 
@@ -337,35 +356,6 @@ struct SettingsView: View {
                             }
                         }
 
-                        Divider().background(Color.uiHairline)
-
-                        HStack {
-                            Text("О программе Golosok")
-                                .font(UIStyleFont.body(size: 13, weight: .medium))
-                                .foregroundColor(.uiInk)
-                            Spacer()
-                            UIOutlineButton(title: "Открыть") {
-                                showingAboutSheet = true
-                            }
-                        }
-                        .sheet(isPresented: $showingAboutSheet) {
-                            AboutView().withAppLocale()
-                        }
-
-                        Divider().background(Color.uiHairline)
-
-                        HStack {
-                            Text("Логи приложения")
-                                .font(UIStyleFont.body(size: 13, weight: .medium))
-                                .foregroundColor(.uiInk)
-                            Spacer()
-                            UIOutlineButton(title: "Открыть") {
-                                showingLogsSheet = true
-                            }
-                        }
-                        .sheet(isPresented: $showingLogsSheet) {
-                            LogsView().withAppLocale()
-                        }
                     }
                 }
                 

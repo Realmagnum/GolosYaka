@@ -969,17 +969,23 @@ struct ContentView: View {
     }
     
     private var sidebarHeader: some View {
-        HStack(spacing: 8) {
-            Image("AppLogo").resizable().aspectRatio(contentMode: .fit).frame(width: 22, height: 22).cornerRadius(4)
-            VStack(alignment: .leading, spacing: -2) {
-                Text("Голосок").font(UIStyleFont.display(size: 16, weight: .bold)).foregroundColor(.uiInk)
-                HStack(spacing: 4) {
-                    let versionStr = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? ""
-                    Text(versionStr).font(UIStyleFont.body(size: 10, weight: .medium)).foregroundColor(.uiMidGray)
+        Button(action: { showAboutSheet = true }) {
+            HStack(spacing: 8) {
+                Image("AppLogo").resizable().aspectRatio(contentMode: .fit).frame(width: 22, height: 22).cornerRadius(4)
+                VStack(alignment: .leading, spacing: -2) {
+                    Text("Голосок").font(UIStyleFont.display(size: 16, weight: .bold)).foregroundColor(.uiInk)
+                    HStack(spacing: 4) {
+                        let versionStr = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? ""
+                        Text(versionStr).font(UIStyleFont.body(size: 10, weight: .medium)).foregroundColor(.uiMidGray)
+                    }
                 }
+                Spacer()
             }
-            Spacer()
-        }.padding(.horizontal, 16).padding(.top, 16)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(PlainButtonStyle())
+        .help(LocalizedStringKey("О программе"))
+        .padding(.horizontal, 16).padding(.top, 16)
     }
     
     private var historySearchAndList: some View {
