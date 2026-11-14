@@ -941,7 +941,8 @@ struct ContentView: View {
                 case .settings: SettingsView()
                 }
             }
-        }.frame(minWidth: 840, minHeight: 520)
+        }
+        .frame(minWidth: 840, maxWidth: .infinity, minHeight: 520, maxHeight: .infinity, alignment: .topLeading)
     }
     
     private var sidebarView: some View {
@@ -1080,7 +1081,7 @@ struct ContentView: View {
                             }
                             let buttonsRow: () -> AnyView = {
                                 AnyView(
-                                    HStack(spacing: 8) {
+                                    FlowLayout(spacing: 8) {
                                         StagePickerMenuButton(textStageMode: $textStageMode, note: selected)
                                         CopyFeedbackButton(textToCopy: displayedText(for: selected))
                                         EditToggleButton(isEditing: isEditing) {
@@ -1105,26 +1106,17 @@ struct ContentView: View {
                                         )
                                         NoteExportMenuButton(note: selected, audioCapture: audioCapture)
                                         UIDestructiveButton(title: "Удалить") { itemToDelete = selected.id; showingDeleteAlert = true }
-                                    }.fixedSize(horizontal: true, vertical: false).layoutPriority(1)
+                                    }
+                                    .frame(maxWidth: .infinity, alignment: .leading)
                                 )
                             }
-                            ViewThatFits(in: .horizontal) {
-                                HStack(alignment: .center) {
-                                    dateHeader()
-                                    Spacer(minLength: 12)
-                                    buttonsRow()
-                                }
-                                VStack(alignment: .leading, spacing: 10) {
-                                    dateHeader()
-                                    HStack {
-                                        Spacer(minLength: 0)
-                                        buttonsRow()
-                                    }
-                                }
+                            VStack(alignment: .leading, spacing: 12) {
+                                dateHeader()
+                                buttonsRow()
                             }
                             
                             let diff = diffRanges(for: selected)
-                            HStack(spacing: 8) {
+                            FlowLayout(spacing: 8) {
                                 if selected.isAITransform == true || selected.duration == "AI" {
                                     MetadataPill(icon: "sparkles", text: L10n.tr("History.AI"), color: Color(hex: "#A855F7"))
                                 } else {
@@ -1164,7 +1156,6 @@ struct ContentView: View {
                                         .foregroundColor(.blue).padding(.horizontal, 8).padding(.vertical, 4).background(Color.blue.opacity(0.12)).cornerRadius(6)
                                     }.buttonStyle(.plain)
                                 }
-                                Spacer(minLength: 8)
                                 if !isEditing && !isSearchBarVisible {
                                     Button(action: toggleSearchBar) {
                                         HStack(spacing: 5) {
@@ -1187,6 +1178,7 @@ struct ContentView: View {
                                     .help(LocalizedStringKey("Поиск по стенограмме (⌘F)"))
                                 }
                             }
+                            .frame(maxWidth: .infinity, alignment: .leading)
                             
                             Divider().background(Color.uiHairline).padding(.vertical, 4)
                             if isSearchBarVisible && !isEditing {
