@@ -38,6 +38,7 @@ enum L10n {
 
 extension Notification.Name {
     static let appLanguageDidChange = Notification.Name("AppLanguageDidChange")
+    static let historyDidClear = Notification.Name("HistoryDidClear")
 }
 
 final class LanguageSettings: ObservableObject {

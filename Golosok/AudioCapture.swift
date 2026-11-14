@@ -1929,12 +1929,22 @@ func checkUpdates(force: Bool = false) {
     
     func deleteItem(at index: Int) {
         let item = history[index]
+        if playingItemId == item.id { stopSyncedPlayback() }
+        if preloadedPlayerId == item.id { audioPlayer = nil; preloadedPlayerId = nil }
         history.remove(at: index)
         deleteAudioFile(for: item.id)
     }
     func clearAllHistory() {
+        stopSyncedPlayback()
+        audioPlayer = nil
+        if FileManager.default.fileExists(atPath: tempAudioURL.path) {
+            try? FileManager.default.removeItem(at: tempAudioURL)
+        }
         history.forEach { deleteAudioFile(for: $0.id) }
         history.removeAll()
+        pipelinePhase = .idle
+        warningMessage = nil
+        NotificationCenter.default.post(name: .historyDidClear, object: nil)
     }
     private func historyStoreURL() -> URL? {
         guard let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first else { return nil }

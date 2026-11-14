@@ -815,6 +815,9 @@ struct ContentView: View {
         .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("OpenAboutModal"))) { _ in
             showAboutSheet = true
         }
+        .onReceive(NotificationCenter.default.publisher(for: .historyDidClear)) { _ in
+            resetAfterHistoryClear()
+        }
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
             audioCapture.checkUpdates()
         }
@@ -1384,6 +1387,27 @@ struct ContentView: View {
                 }
             }
         } message: { Text("Это действие нельзя отменить.") }
+    }
+
+    private func resetAfterHistoryClear() {
+        editSaveWorkItem?.cancel()
+        editSaveWorkItem = nil
+        selectedItemId = nil
+        selectedTimings = nil
+        isEditing = false
+        editingItemID = nil
+        editableText = ""
+        currentSelection = nil
+        aiRequest = nil
+        AISelectionToolbarPresenter.shared.close()
+        searchText = ""
+        filteredResults = []
+        isSearching = false
+        isSearchBarVisible = false
+        transcriptSearchText = ""
+        cachedSyncedMatchIndices = []
+        cachedNativeMatchRanges = []
+        currentMatchPosition = 0
     }
 
     private func loadSelectedTimings() {
