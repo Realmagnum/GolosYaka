@@ -47,26 +47,21 @@ struct AboutView: View {
             // 4. КНОПКИ
             HStack(spacing: 8) {
                 AboutLinkButton(title: "GitHub", icon: "terminal.fill") {
-                    openURL(URL(string: "https://github.com/Berliner187/Golosok")!)
+                    openURL(URL(string: "https://github.com/Realmagnum/Golosok/")!)
                 }
                 AboutLinkButton(title: "Поддержка", icon: "envelope") {
-                    openURL(URL(string: "https://telegram.me/fancycode")!)
+                    openURL(URL(string: "https://t.me/Realmagnum")!)
                 }
                 AboutLinkButton(title: "Релизы", icon: "doc.text") {
-                    openURL(URL(string: "https://github.com/Berliner187/Golosok/releases")!)
+                    openURL(URL(string: "https://github.com/Realmagnum/Golosok/releases")!)
                 }
             }
             
             Divider().background(Color.uiHairline)
             
-            // 5. КНОПКА ЗАКРЫТИЯ И ПОДВАЛ
+            // 5. КНОПКА ЗАКРЫТИЯ
             HStack {
-                Text("Design & Dev by Kozak • 2026")
-                    .font(.system(size: 10, weight: .medium, design: .monospaced))
-                    .foregroundColor(.uiMidGray)
-                
                 Spacer()
-                
                 UIOutlineButton(title: "Закрыть") {
                     dismiss()
                 }

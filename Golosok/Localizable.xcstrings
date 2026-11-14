@@ -453,71 +453,6 @@
         }
       }
     },
-    "Design & Dev by Kozak • 2026": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Design & Dev by Kozak • 2026"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Design & Dev by Kozak • 2026"
-          }
-        }
-      }
-    },
-    "Design & Development by ": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Design & Development by "
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Дизайн и разработка: "
-          }
-        }
-      }
-    },
-    "Design & Development by Kozak • 2026": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Design & Development by Kozak • 2026"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Design & Development by Kozak • 2026"
-          }
-        }
-      }
-    },
-    "Design by Kozak": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Design by Kozak"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Design by Kozak"
-          }
-        }
-      }
-    },
     "DownloadStatus.Connecting": {
       "extractionState": "stale",
       "localizations": {
@@ -2073,22 +2008,6 @@
         }
       }
     },
-    "ГОЛОСОК ™2026": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "GOLOSOK ™2026"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ГОЛОСОК ™2026"
-          }
-        }
-      }
-    },
     "Генерация ответа…": {
       "localizations": {
         "en": {
@@ -2326,22 +2245,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Дашборд"
-          }
-        }
-      }
-    },
-    "Делиться аналитикой": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Share analytics"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Делиться аналитикой"
           }
         }
       }
@@ -3621,22 +3524,6 @@
         }
       }
     },
-    "Нажимая «Начать использовать», вы принимаете [Условия лицензии](https://golosok.space/docs/public-offer/) и [Политику конфиденциальности](https://golosok.space/docs/privacy-policy/).": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "By tapping “Start using”, you accept the [License Terms](https://golosok.space/docs/public-offer/) and [Privacy Policy](https://golosok.space/docs/privacy-policy/)."
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Нажимая «Начать использовать», вы принимаете [Условия лицензии](https://golosok.space/docs/public-offer/) и [Политику конфиденциальности](https://golosok.space/docs/privacy-policy/)."
-          }
-        }
-      }
-    },
     "Нажмите, чтобы отменить генерацию": {
       "localizations": {
         "en": {
@@ -4244,22 +4131,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "ОСТАЛОСЬ"
-          }
-        }
-      }
-    },
-    "Обезличенные метрики: скорость, ошибки, версия ОС и модели. Без текста и аудио.": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Anonymized metrics: speed, errors, OS and model versions. No text or audio."
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Обезличенные метрики: скорость, ошибки, версия ОС и модели. Без текста и аудио."
           }
         }
       }
@@ -5355,22 +5226,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Показатель"
-          }
-        }
-      }
-    },
-    "Помогите улучшить продукт. Отправляются только обезличенные метрики — без текста, аудио и имён файлов.": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Help improve the product. Only anonymized metrics are sent — no text, audio or file names."
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Помогите улучшить продукт. Отправляются только обезличенные метрики — без текста, аудио и имён файлов."
           }
         }
       }
