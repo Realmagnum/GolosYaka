@@ -111,6 +111,10 @@ open Golosok.xcodeproj
 ресурсы в бандл реальными файлами, генерируют локализации из String Catalog и
 собирают `Info.plist` с правильной версией.
 
+Ресурсы не хранятся в git. Укажите `GOLOSOK_RESOURCES_DIR` на каталог с `ffmpeg`,
+`whisper-cli`, `transcribe-cli`, `gigaam.gguf`, `AppIcon.icns` и `Assets.car`
+(по умолчанию они читаются из установленного `/Applications/Golosok.app`).
+
 ```bash
 # Dev-бандл: universal, ad-hoc подпись, ../Golosok-Build/Golosok-Dev.app
 ./build-dev.sh

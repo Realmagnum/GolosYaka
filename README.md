@@ -127,6 +127,10 @@ Command Line Tools are enough — both scripts compile with `swiftc`, copy the r
 resources into the bundle as real files, generate localizations from the String Catalog
 and produce a versioned `Info.plist`.
 
+Runtime resources are not stored in git. Point `GOLOSOK_RESOURCES_DIR` at a directory that
+contains `ffmpeg`, `whisper-cli`, `transcribe-cli`, `gigaam.gguf`, `AppIcon.icns` and
+`Assets.car` (by default it reads them from an installed `/Applications/Golosok.app`).
+
 ```bash
 # Dev bundle: universal binary, ad-hoc signed, ../Golosok-Build/Golosok-Dev.app
 ./build-dev.sh
