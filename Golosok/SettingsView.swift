@@ -500,8 +500,8 @@ struct AddCustomInferenceSheet: View {
     @ObservedObject private var models = ModelStore.shared
 
     @State private var name: String = ""
-    @State private var endpointURL: String = "http://100.64.0.6:9292/v1/audio/transcriptions"
-    @State private var modelIdentifier: String = "vibevoice-asr-gpu"
+    @State private var endpointURL: String = ""
+    @State private var modelIdentifier: String = ""
     @State private var apiKey: String = ""
 
     var body: some View {
@@ -527,7 +527,7 @@ struct AddCustomInferenceSheet: View {
             }
 
             VStack(alignment: .leading, spacing: 6) {
-                Text("Endpoint URL")
+                Text("URL эндпоинта")
                     .font(UIStyleFont.body(size: 12, weight: .medium))
                     .foregroundColor(.uiMidGray)
                 TextField("http://host:port/v1/audio/transcriptions", text: $endpointURL)
@@ -542,7 +542,7 @@ struct AddCustomInferenceSheet: View {
                 Text("Идентификатор модели (model param)")
                     .font(UIStyleFont.body(size: 12, weight: .medium))
                     .foregroundColor(.uiMidGray)
-                TextField("например: vibevoice-asr-gpu или whisper-1", text: $modelIdentifier)
+                TextField("например: whisper-1 или large-v3", text: $modelIdentifier)
                     .textFieldStyle(.plain)
                     .padding(8)
                     .background(Color.uiSidebar)

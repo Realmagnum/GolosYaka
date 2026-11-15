@@ -4,7 +4,8 @@ Golosok Project Invariant Verifier (Architecture & Localization Gate)
 Runs before build. Fails the build if:
 1. Localizable.xcstrings has keys missing 'en' or 'ru' translations.
 2. Swift UI code contains raw, unlocalized Cyrillic strings in UI views.
-3. Obvious state machine / lifecycle hazards are detected.
+3. Версия в VERSION, pbxproj и шаблоне Info.plist не расходится.
+4. В рантайм-код не утекли приватные адреса, чужие репозитории и эвристики по портам.
 """
 
 import sys
@@ -100,6 +101,67 @@ def check_unlocalized_ui_strings():
 
     return errors
 
+def check_version_consistency():
+    """Единый источник версии: VERSION ↔ MARKETING_VERSION ↔ шаблон Info.plist."""
+    errors = []
+    version_path = REPO_ROOT / "VERSION"
+    if not version_path.exists():
+        return ["Нет файла VERSION (единственного источника версии)"]
+
+    version = version_path.read_text(encoding="utf-8").strip()
+    if not re.fullmatch(r"\d+\.\d+\.\d+", version):
+        errors.append(f"VERSION содержит невалидную версию: {version!r}")
+
+    pbxproj = REPO_ROOT / "Golosok.xcodeproj" / "project.pbxproj"
+    if pbxproj.exists():
+        marketing = re.findall(r"MARKETING_VERSION = ([^;]+);", pbxproj.read_text(encoding="utf-8"))
+        versions = {value.strip().strip('"') for value in marketing}
+        # Тестовые таргеты держат собственный MARKETING_VERSION (1.0) — сверяем только
+        # наличие версии приложения среди значений, а не равенство множеств.
+        if versions and version not in versions:
+            errors.append(
+                f"MARKETING_VERSION в pbxproj {sorted(versions)} не содержит VERSION {version}"
+            )
+
+    template = REPO_ROOT / "Info.plist"
+    if template.exists():
+        body = template.read_text(encoding="utf-8")
+        if "$(MARKETING_VERSION)" not in body:
+            errors.append("Info.plist не использует $(MARKETING_VERSION): версия задублирована")
+    else:
+        errors.append("Нет шаблона Info.plist")
+
+    return errors
+
+
+# Приватные адреса и чужие идентификаторы не должны попадать в рантайм.
+FORBIDDEN_RUNTIME_PATTERNS = [
+    (re.compile(r"\b100\.(?:6[4-9]|[7-9]\d|1[01]\d|12[0-7])\.\d{1,3}\.\d{1,3}\b"), "CGNAT/Tailscale адрес"),
+    (re.compile(r"\b192\.168\.\d{1,3}\.\d{1,3}\b"), "приватный адрес 192.168.x.x"),
+    (re.compile(r"\b10\.\d{1,3}\.\d{1,3}\.\d{1,3}\b"), "приватный адрес 10.x.x.x"),
+    (re.compile(r"\b172\.(?:1[6-9]|2\d|3[01])\.\d{1,3}\.\d{1,3}\b"), "приватный адрес 172.16-31.x.x"),
+    (re.compile(r'contains\(\s*"\d{2,5}"\s*\)'), "эвристика по номеру порта"),
+    (re.compile(r"Berliner187"), "чужой репозиторий в рантайм-коде"),
+]
+
+
+def check_runtime_hygiene():
+    errors = []
+    for swift_path in sorted(SWIFT_DIR.glob("*.swift")):
+        with open(swift_path, "r", encoding="utf-8") as f:
+            for line_no, line in enumerate(f, 1):
+                stripped = line.strip()
+                if stripped.startswith("//") or stripped.startswith("/*"):
+                    continue
+                for pattern, description in FORBIDDEN_RUNTIME_PATTERNS:
+                    match = pattern.search(line)
+                    if match:
+                        errors.append(
+                            f"{swift_path.name}:{line_no} [{description}] -> {match.group(0)!r}"
+                        )
+    return errors
+
+
 def main():
     print("==> Проверка архитектурных инвариантов и локализации (Pre-Build Gate)...")
     all_errors = []
@@ -111,6 +173,12 @@ def main():
     # 2. Hardcoded UI strings
     ui_errors = check_unlocalized_ui_strings()
     all_errors.extend(ui_errors)
+
+    # 3. Единый источник версии
+    all_errors.extend(check_version_consistency())
+
+    # 4. Гигиена рантайма (приватные адреса, чужие репозитории, эвристики)
+    all_errors.extend(check_runtime_hygiene())
 
     if all_errors:
         print("\n❌ ПРОВЕРКА ИНВАРИАНТОВ ПРОВАЛЕНА! Обнаружены архитектурные нарушения:")

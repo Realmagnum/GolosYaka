@@ -351,20 +351,20 @@ final class AIProviderStore: ObservableObject {
         var value = defaults.string(forKey: "ai.provider.\(preset.id).model")
             ?? (preset.id == legacyID ? defaults.string(forKey: "ai.model") : nil)
             ?? preset.defaultModel
-        if preset.id == "neuraldeep" && (value == "neuraldeep/qwen3.8-27b" || value.isEmpty) {
-            value = "qwen3.6-fp8-noreason"
+        // Пустое значение — единственный случай, когда подставляем дефолт пресета.
+        // Осознанный выбор пользователя (включая устаревшие id вроде deepseek-chat) не перезаписываем.
+        if value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            value = preset.defaultModel
         }
-        if preset.id == "deepseek" && (value == "deepseek-chat" || value == "deepseek-reasoner" || value.isEmpty) {
-            value = "deepseek-flash"
+        // Единственное исключение: retired id модели Neuraldeep, который больше не существует в API.
+        if preset.id == "neuraldeep" && value == "neuraldeep/qwen3.8-27b" {
+            value = "qwen3.6-fp8-noreason"
         }
         return value
     }
 
     private static func savedAPIKey(for preset: AIProviderPreset, legacyID: String?) -> String {
         if let key = KeyStore.get("ai.provider.\(preset.id).apiKey"), !key.isEmpty {
-            return key
-        }
-        if preset.baseURL.contains("8317"), let key = KeyStore.get("ai.provider.openai.apiKey"), !key.isEmpty {
             return key
         }
         if preset.id == legacyID, let key = KeyStore.get("ai.apiKey"), !key.isEmpty {

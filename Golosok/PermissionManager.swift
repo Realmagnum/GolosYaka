@@ -107,3 +107,15 @@ class PermissionManager: ObservableObject {
         }
     }
 }
+
+// MARK: - Безопасное приведение типов Accessibility API
+
+enum AXValueCast {
+    /// Accessibility API отдаёт `CFTypeRef`. Условное приведение к CF-типу (`as?`) в Swift
+    /// считается всегда успешным и не компилируется, поэтому сначала проверяем `CFTypeID`,
+    /// а затем переинтерпретируем значение — это единственный корректный способ без `as!`.
+    static func element(_ ref: CFTypeRef) -> AXUIElement? {
+        guard CFGetTypeID(ref) == AXUIElementGetTypeID() else { return nil }
+        return unsafeBitCast(ref, to: AXUIElement.self)
+    }
+}

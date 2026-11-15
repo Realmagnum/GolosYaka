@@ -1,60 +1,52 @@
 #!/bin/bash
-set -e
+# Dev-сборка Golosok: валидный бандл с реальными ресурсами, ad-hoc подпись.
+#
+# Использование:
+#   ./build-dev.sh                     # universal (arm64 + x86_64)
+#   ./build-dev.sh --arch arm64        # только arm64 (быстрее)
+#   GOLOSOK_BUILD_ROOT=/tmp/build ./build-dev.sh
+#
+# Каталог сборки по умолчанию — ../Golosok-Build рядом с репозиторием, без привязки к /Users/...
 
-DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-APP_TARGET="/Users/rm/Documents/!Projects/Golosok-Build/Golosok-Dev.app"
+set -euo pipefail
 
-echo "==> Проверка архитектурных инвариантов и локализации..."
-python3 "$DIR/scripts/verify_project_invariants.py"
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=scripts/build_common.sh
+source "$ROOT/scripts/build_common.sh"
 
-echo "==> Компиляция Golosok-Dev..."
-swiftc -parse-as-library -target arm64-apple-macos14.0 -O \
-    -sdk "$(xcrun --show-sdk-path)" \
-    "$DIR"/Golosok/*.swift \
-    -o "$APP_TARGET/Contents/MacOS/Golosok"
+ARCHS="universal"
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --arch)
+            ARCHS="${2:?--arch требует значение: arm64 | x86_64 | universal}"
+            shift 2
+            ;;
+        --arch=*)
+            ARCHS="${1#*=}"
+            shift
+            ;;
+        *)
+            echo "❌ Неизвестный аргумент: $1" >&2
+            exit 1
+            ;;
+    esac
+done
 
-echo "==> Генерация локализаций из Localizable.xcstrings..."
-python3 - << 'PYEOF'
-import json, os
+VERSION="$(read_version)"
+BUILD_NUMBER="$(read_build_number)"
+BUILD_ROOT="${GOLOSOK_BUILD_ROOT:-$(dirname "$ROOT")/Golosok-Build}"
+APP_TARGET="$BUILD_ROOT/Golosok-Dev.app"
 
-src = "/Users/rm/Documents/!Projects/Golosok/Golosok/Localizable.xcstrings"
-with open(src) as f:
-    d = json.load(f)
+print_banner "dev v${VERSION}-dev ($ARCHS)"
 
-en_dict = {}
-ru_dict = {}
+verify_invariants
 
-for k, item in d.get("strings", {}).items():
-    locs = item.get("localizations", {})
-    if "en" in locs and "stringUnit" in locs["en"]:
-        en_dict[k] = locs["en"]["stringUnit"].get("value", k)
-    if "ru" in locs and "stringUnit" in locs["ru"]:
-        ru_dict[k] = locs["ru"]["stringUnit"].get("value", k)
-    else:
-        ru_dict[k] = k
+WORK_DIR="$(mktemp -d)"
+trap 'rm -rf "$WORK_DIR"' EXIT
+compile_binary "$ARCHS" "$WORK_DIR/Golosok"
 
-def save_strings(data, path):
-    os.makedirs(os.path.dirname(path), exist_ok=True)
-    with open(path, "w", encoding="utf-8") as f:
-        for k in sorted(data.keys()):
-            v = data[k]
-            k_esc = k.replace('\\', '\\\\').replace('"', '\\"').replace('\n', '\\n')
-            v_esc = v.replace('\\', '\\\\').replace('"', '\\"').replace('\n', '\\n')
-            f.write(f'"{k_esc}" = "{v_esc}";\n')
+stage_bundle "$APP_TARGET" "$WORK_DIR/Golosok" "${VERSION}-dev" "$BUILD_NUMBER"
+sign_bundle "$APP_TARGET" "-"
 
-res_dir = "/Users/rm/Documents/!Projects/Golosok-Build/Golosok-Dev.app/Contents/Resources"
-save_strings(en_dict, os.path.join(res_dir, "en.lproj/Localizable.strings"))
-save_strings(ru_dict, os.path.join(res_dir, "ru.lproj/Localizable.strings"))
-print(f"Generated Localizable.strings: en={len(en_dict)}, ru={len(ru_dict)}")
-PYEOF
-
-echo "==> Обновление версии в Info.plist с суффиксом -dev..."
-BASE_VER=$(/usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" "$APP_TARGET/Contents/Info.plist" 2>/dev/null || echo "1.13.9")
-CLEAN_VER="${BASE_VER%-dev}"
-/usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString ${CLEAN_VER}-dev" "$APP_TARGET/Contents/Info.plist"
-
-echo "==> Подписание ad-hoc сигнатурой..."
-xattr -cr "$APP_TARGET"
-codesign --force --deep --sign - "$APP_TARGET"
-
-echo "==> Готово: $APP_TARGET (v${CLEAN_VER}-dev)"
+echo "==> Готово: $APP_TARGET (v${VERSION}-dev, build ${BUILD_NUMBER}, ${ARCHS})"
+echo "    Запуск: open \"$APP_TARGET\""

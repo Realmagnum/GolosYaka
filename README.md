@@ -6,10 +6,10 @@
   <a href="https://github.com/jaywcjlove/awesome-swift-macos-apps">
     <img src="https://img.shields.io/badge/Featured_in-Awesome_Swift_macOS_Apps-black?style=for-the-badge&logo=swift&logoColor=F05138" alt="Awesome Swift macOS Apps">
   </a>
-  <a href="https://github.com/Berliner187/Golosok/releases">
-    <img src="https://img.shields.io/github/v/release/Berliner187/Golosok?style=for-the-badge&color=black&logo=apple" alt="Latest Release">
+  <a href="https://github.com/Realmagnum/Golosok/releases">
+    <img src="https://img.shields.io/github/v/release/Realmagnum/Golosok?style=for-the-badge&color=black&logo=apple" alt="Latest Release">
   </a>
-  <a href="https://github.com/Berliner187/Golosok/blob/main/LICENSE">
+  <a href="https://github.com/Realmagnum/Golosok/blob/main/LICENSE">
     <img src="https://img.shields.io/badge/License-Open_Source-black?style=for-the-badge" alt="License">
   </a>
 </p>
@@ -109,7 +109,7 @@ If you want to clone the repository and build the Xcode project manually:
 
 ```bash
 # 1. Clone the repository
-git clone https://github.com/Berliner187/Golosok.git
+git clone https://github.com/Realmagnum/Golosok.git
 cd Golosok
 
 # 2. Download GigaAM model weights
@@ -121,8 +121,39 @@ open Golosok.xcodeproj
 
 In Xcode, press `⌘ + R` to build and run.
 
-A local development build (with the invariant and localization gate) is available via:
+### Scripted builds (no full Xcode required)
+
+Command Line Tools are enough — both scripts compile with `swiftc`, copy the runtime
+resources into the bundle as real files, generate localizations from the String Catalog
+and produce a versioned `Info.plist`.
 
 ```bash
+# Dev bundle: universal binary, ad-hoc signed, ../Golosok-Build/Golosok-Dev.app
 ./build-dev.sh
+./build-dev.sh --arch arm64            # faster, single architecture
+
+# Release: universal .app + DMG, Developer ID signing, optional notarization
+GOLOSOK_RESOURCES_DIR=/Applications/Golosok.app/Contents/Resources \
+  ./build-release.sh --identity "Developer ID Application: Name (TEAMID)" \
+                     --notary-profile golosok
+```
+
+The version comes from the `VERSION` file; `scripts/verify_project_invariants.py`
+fails the build if `VERSION`, `MARKETING_VERSION` and `Info.plist` disagree.
+
+Tests and the release checklist:
+
+```bash
+./scripts/run-tests.sh     # smoke suite locally, full test target when Xcode is present
+cat docs/RELEASE.md
+```
+
+Bundled third-party components (FFmpeg, whisper.cpp, transcribe.cpp, GigaAM weights) and
+their licenses are listed in `THIRD-PARTY-NOTICES.md`; every build copies it into the app
+bundle.
+
+If the DMG is signed ad-hoc (no Developer ID certificate), macOS blocks it on first launch:
+
+```bash
+xattr -cr /Applications/Golosok.app
 ```

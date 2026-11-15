@@ -92,7 +92,8 @@ final class AISelectionManager {
         }
 
         var selectedTextRef: CFTypeRef?
-        guard AXUIElementCopyAttributeValue(focusedElement as! AXUIElement, kAXSelectedTextAttribute as CFString, &selectedTextRef) == .success,
+        guard let focusedAX = AXValueCast.element(focusedElement),
+              AXUIElementCopyAttributeValue(focusedAX, kAXSelectedTextAttribute as CFString, &selectedTextRef) == .success,
               let selectedString = selectedTextRef as? String else {
             return nil
         }

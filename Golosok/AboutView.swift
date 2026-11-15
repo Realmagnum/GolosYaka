@@ -30,7 +30,9 @@ struct AboutView: View {
                         HStack(spacing: 6) {
                             if audioCapture.isDownloadingUpdate {
                                 ProgressView().scaleEffect(0.6)
-                                Text(audioCapture.updateProgressText.isEmpty ? LocalizedStringKey("Скачивание...") : LocalizedStringKey(audioCapture.updateProgressText))
+                                Text(audioCapture.updateProgressStatus == .idle
+                                     ? LocalizedStringKey("Скачивание...")
+                                     : LocalizedStringKey(audioCapture.updateProgressStatus.localized))
                                     .font(UIStyleFont.body(size: 10, weight: .bold))
                                     .foregroundColor(.white)
                                 Button(action: { audioCapture.cancelUpdateDownload() }) {

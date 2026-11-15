@@ -1645,7 +1645,7 @@ class AudioCapture: NSObject, ObservableObject, AVAudioRecorderDelegate {
 
     static func interpolateTimings(_ words: [TimedWord], from startSecs: Double, to endSecs: Double) -> [TimedWord] {
         guard words.count > 1, endSecs > startSecs else { return words }
-        var weights: [Double] = words.map { max(1.0, Double(($0.text as NSString).length)) }
+        let weights: [Double] = words.map { max(1.0, Double(($0.text as NSString).length)) }
         let total = weights.reduce(0, +)
         guard total > 0 else { return words }
         var result: [TimedWord] = []
@@ -1705,7 +1705,8 @@ class AudioCapture: NSObject, ObservableObject, AVAudioRecorderDelegate {
         guard AXUIElementCopyAttributeValue(app, kAXFocusedUIElementAttribute as CFString, &focusedRef) == .success,
               let focusedElement = focusedRef else { return true }
         var roleRef: CFTypeRef?
-        guard AXUIElementCopyAttributeValue(focusedElement as! AXUIElement, kAXRoleAttribute as CFString, &roleRef) == .success,
+        guard let focusedAX = AXValueCast.element(focusedElement),
+              AXUIElementCopyAttributeValue(focusedAX, kAXRoleAttribute as CFString, &roleRef) == .success,
               let roleString = roleRef as? String else { return true }
         switch roleString {
         case "AXTextField", "AXTextArea", "AXTextView", "AXComboBox", "AXSearchField",
@@ -1848,6 +1849,7 @@ func checkUpdates(force: Bool = false) {
         if !force, let lastCheck, Date().timeIntervalSince(lastCheck) < 4 * 3600 {
             if let data = UserDefaults.standard.data(forKey: "cachedUpdateInfo") {
                 if let cached = try? JSONDecoder().decode(UpdateInfo.self, from: data),
+                   Self.isTrustedReleaseAsset(cached.url),
                    Self.compareVersions(cached.version, currentVer) == .orderedDescending {
                     DispatchQueue.main.async { self.updateInfo = cached }
                 } else {
@@ -1857,7 +1859,7 @@ func checkUpdates(force: Bool = false) {
             }
             return
         }
-        guard let url = URL(string: "https://api.github.com/repos/Berliner187/Golosok/releases/latest") else { return }
+        guard let url = URL(string: "https://api.github.com/repos/Realmagnum/Golosok/releases/latest") else { return }
         var request = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalAndRemoteCacheData, timeoutInterval: 10.0)
         request.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
         if let etag = UserDefaults.standard.string(forKey: "updateCheckETag") {
@@ -1878,7 +1880,8 @@ func checkUpdates(force: Bool = false) {
                   let assets = json["assets"] as? [[String: Any]],
                   let firstAsset = assets.first(where: { ($0["name"] as? String)?.hasSuffix(".dmg") == true }),
                   let downloadUrlString = firstAsset["browser_download_url"] as? String,
-                  let downloadUrl = URL(string: downloadUrlString) else { return }
+                  let downloadUrl = URL(string: downloadUrlString),
+                  Self.isTrustedReleaseAsset(downloadUrl) else { return }
             let result: UpdateInfo?
             if Self.compareVersions(tagName, currentVer) == .orderedDescending {
                 let codename = releaseName.components(separatedBy: " ").last ?? "UPDATE"
@@ -1894,6 +1897,13 @@ func checkUpdates(force: Bool = false) {
             }
             DispatchQueue.main.async { self.updateInfo = result }
         }.resume()
+    }
+
+    /// Апдейтер принимает только HTTPS-ассеты GitHub: защита от чужого DMG в ответе API или в кэше.
+    static func isTrustedReleaseAsset(_ url: URL) -> Bool {
+        guard url.scheme?.lowercased() == "https", let host = url.host?.lowercased() else { return false }
+        let allowedHosts = ["github.com", "objects.githubusercontent.com", "github-releases.githubusercontent.com"]
+        return allowedHosts.contains { host == $0 || host.hasSuffix("." + $0) }
     }
 
     static func compareVersions(_ a: String, _ b: String) -> ComparisonResult {

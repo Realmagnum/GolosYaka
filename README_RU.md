@@ -93,7 +93,7 @@ xattr -cr /Applications/Golosok.app
 
 ```bash
 # 1. Клонировать репозиторий
-git clone https://github.com/Berliner187/Golosok.git
+git clone https://github.com/Realmagnum/Golosok.git
 cd Golosok
 
 # 2. Скачать веса модели GigaAM
@@ -105,8 +105,38 @@ open Golosok.xcodeproj
 
 В Xcode нажмите `⌘ + R` для сборки и запуска.
 
-Локальная dev-сборка (с проверкой архитектурных инвариантов и локализации):
+### Скриптовые сборки (полный Xcode не нужен)
+
+Достаточно Command Line Tools: оба скрипта компилируют через `swiftc`, копируют
+ресурсы в бандл реальными файлами, генерируют локализации из String Catalog и
+собирают `Info.plist` с правильной версией.
 
 ```bash
+# Dev-бандл: universal, ad-hoc подпись, ../Golosok-Build/Golosok-Dev.app
 ./build-dev.sh
+./build-dev.sh --arch arm64            # быстрее, одна архитектура
+
+# Релиз: universal .app + DMG, подпись Developer ID, опциональная нотаризация
+GOLOSOK_RESOURCES_DIR=/Applications/Golosok.app/Contents/Resources \
+  ./build-release.sh --identity "Developer ID Application: Name (TEAMID)" \
+                     --notary-profile golosok
+```
+
+Версия берётся из файла `VERSION`; `scripts/verify_project_invariants.py` валит сборку,
+если `VERSION`, `MARKETING_VERSION` и `Info.plist` расходятся.
+
+Тесты и релизный чек-лист:
+
+```bash
+./scripts/run-tests.sh     # smoke-набор локально, полный test-таргет при наличии Xcode
+cat docs/RELEASE.md
+```
+
+Сторонние компоненты в бандле (FFmpeg, whisper.cpp, transcribe.cpp, веса GigaAM) и их
+лицензии перечислены в `THIRD-PARTY-NOTICES.md`; каждая сборка кладёт файл внутрь бандла.
+
+Если DMG подписан ad-hoc (нет сертификата Developer ID), macOS заблокирует первый запуск:
+
+```bash
+xattr -cr /Applications/Golosok.app
 ```

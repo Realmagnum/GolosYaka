@@ -1,22 +1,6 @@
 {
   "sourceLanguage": "ru",
   "strings": {
-    " • 2026": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": " • 2026"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": " • 2026"
-          }
-        }
-      }
-    },
     "%.0f / %.0f МБ (%d%%)": {
       "localizations": {
         "en": {
@@ -65,72 +49,6 @@
         }
       }
     },
-    "%.1f / %.1f МБ (%d%%)": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%.1f / %.1f MB (%d%%)"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%.1f / %.1f МБ (%d%%)"
-          }
-        }
-      }
-    },
-    "%.1f сек": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%.1f sec"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%.1f сек"
-          }
-        }
-      }
-    },
-    "%@ %lld %@ %@": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%1$@ %2$lld %3$@ %4$@"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "new",
-            "value": "%1$@ %2$lld %3$@ %4$@"
-          }
-        }
-      }
-    },
-    "%lld": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%lld"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%lld"
-          }
-        }
-      }
-    },
     "%lld МБ — Apple Metal": {
       "localizations": {
         "en": {
@@ -163,38 +81,6 @@
         }
       }
     },
-    "%lld%%": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%lld%%"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%lld%%"
-          }
-        }
-      }
-    },
-    "%lld/%lld": {
-      "localizations": {
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%1$lld/%2$lld"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%1$lld/%2$lld"
-          }
-        }
-      }
-    },
     "+ Инференс": {
       "localizations": {
         "en": {
@@ -207,22 +93,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "+ Инференс"
-          }
-        }
-      }
-    },
-    "/ %lld": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "/ %lld"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "/ %lld"
           }
         }
       }
@@ -255,23 +125,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "30 дней"
-          }
-        }
-      }
-    },
-    "4 ФОРМАТА": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "4 FORMATS"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "4 ФОРМАТА"
           }
         }
       }
@@ -504,23 +357,6 @@
         }
       }
     },
-    "Drag & drop": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Drag & drop"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Drag & drop"
-          }
-        }
-      }
-    },
     "English": {
       "extractionState": "stale",
       "localizations": {
@@ -749,38 +585,6 @@
         }
       }
     },
-    "Kozak": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Kozak"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Kozak"
-          }
-        }
-      }
-    },
-    "LM Studio / локальный сервер": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "LM Studio / local server"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "LM Studio / локальный сервер"
-          }
-        }
-      }
-    },
     "Low (минимальный)": {
       "localizations": {
         "en": {
@@ -842,23 +646,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Medium (средний)"
-          }
-        }
-      }
-    },
-    "Ollama (локально)": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ollama (local)"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ollama (локально)"
           }
         }
       }
@@ -947,23 +734,6 @@
         }
       }
     },
-    "Sber GigaAM v3 (E2E-RNNT)": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Sber GigaAM v3 (E2E-RNNT)"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Sber GigaAM v3 (E2E-RNNT)"
-          }
-        }
-      }
-    },
     "WPM (ТЕМП)": {
       "localizations": {
         "en": {
@@ -976,38 +746,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "WPM (ТЕМП)"
-          }
-        }
-      }
-    },
-    "deepseek-chat": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "deepseek-chat"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "deepseek-chat"
-          }
-        }
-      }
-    },
-    "gls_…": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "gls_…"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "gls_…"
           }
         }
       }
@@ -1092,23 +830,6 @@
         }
       }
     },
-    "Авто-деление на абзацы и сохранение в Markdown, CSV, TXT или JSON": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Auto-paragraphing and saving to Markdown, CSV, TXT or JSON"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Авто-деление на абзацы и сохранение в Markdown, CSV, TXT или JSON"
-          }
-        }
-      }
-    },
     "Автоматическая компенсация ошибок распознавания английских терминов": {
       "localizations": {
         "en": {
@@ -1169,22 +890,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Автоматически открывать свежую заметку по завершении расшифровки"
-          }
-        }
-      }
-    },
-    "Автоматически переключиться при сбое сети, таймауте или ошибках 401/5xx": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Automatically failover on network error, timeout, or 401/5xx"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Автоматически переключиться при сбое сети, таймауте или ошибках 401/5xx"
           }
         }
       }
@@ -1269,6 +974,22 @@
         }
       }
     },
+    "URL эндпоинта": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Endpoint URL"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "URL эндпоинта"
+          }
+        }
+      }
+    },
     "Актуальная версия": {
       "localizations": {
         "en": {
@@ -1333,23 +1054,6 @@
         }
       }
     },
-    "Больше": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "MORE"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Больше"
-          }
-        }
-      }
-    },
     "Борд": {
       "localizations": {
         "en": {
@@ -1394,23 +1098,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Было"
-          }
-        }
-      }
-    },
-    "Быстрый ввод": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Quick input"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Быстрый ввод"
           }
         }
       }
@@ -1703,22 +1390,6 @@
         }
       }
     },
-    "Войти на сайте": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Sign in"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Войти на сайте"
-          }
-        }
-      }
-    },
     "Войти через браузер": {
       "localizations": {
         "en": {
@@ -1847,23 +1518,6 @@
         }
       }
     },
-    "Вставить под текст": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Insert below"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Вставить под текст"
-          }
-        }
-      }
-    },
     "Вставка под курсор": {
       "localizations": {
         "en": {
@@ -1924,22 +1578,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Вы просматриваете «%@». Основной провайдер — «%@» и не меняется при просмотре."
-          }
-        }
-      }
-    },
-    "Выберите резервного провайдера:": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Select failover provider:"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Выберите резервного провайдера:"
           }
         }
       }
@@ -2248,23 +1886,6 @@
         }
       }
     },
-    "Дашборд": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Dashboard"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Дашборд"
-          }
-        }
-      }
-    },
     "Деловой стиль": {
       "extractionState": "stale",
       "localizations": {
@@ -2298,23 +1919,6 @@
         }
       }
     },
-    "Диктовка (Старт / Стоп)": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Dictation (Start / Stop)"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Диктовка (Старт / Стоп)"
-          }
-        }
-      }
-    },
     "Для локального инференса, домашней сети и Tailscale": {
       "localizations": {
         "en": {
@@ -2327,22 +1931,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Для локального инференса, домашней сети и Tailscale"
-          }
-        }
-      }
-    },
-    "До": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Until"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "До"
           }
         }
       }
@@ -2680,22 +2268,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Заполните Base URL"
-          }
-        }
-      }
-    },
-    "Заполните baseURL и модель": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Fill in the base URL and model"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Заполните baseURL и модель"
           }
         }
       }
@@ -3134,23 +2706,6 @@
         }
       }
     },
-    "Кастомные промпты": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Custom prompts"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Кастомные промпты"
-          }
-        }
-      }
-    },
     "Компенсация искажений англоязычных терминов": {
       "localizations": {
         "en": {
@@ -3211,23 +2766,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "ЛЮБИТЕЛЬ"
-          }
-        }
-      }
-    },
-    "ЛЮБОЙ ФОРМАТ": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ANY FORMAT"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ЛЮБОЙ ФОРМАТ"
           }
         }
       }
@@ -3328,23 +2866,6 @@
         }
       }
     },
-    "Меньше": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "LESS"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Меньше"
-          }
-        }
-      }
-    },
     "Минуты": {
       "extractionState": "stale",
       "localizations": {
@@ -3426,23 +2947,6 @@
         }
       }
     },
-    "НЕД.": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "WK"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "НЕД."
-          }
-        }
-      }
-    },
     "НЕДЕЛЬНЫЙ ТРЕНД": {
       "localizations": {
         "en": {
@@ -3519,23 +3023,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Надиктовать"
-          }
-        }
-      }
-    },
-    "Надиктуйте мысль – текст сразу появится под курсором в любом приложении": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Dictate a thought – the text appears right under the cursor in any app"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Надиктуйте мысль – текст сразу появится под курсором в любом приложении"
           }
         }
       }
@@ -4053,39 +3540,6 @@
         }
       }
     },
-    "О программе Golosok": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "About Golosok"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "О программе Golosok"
-          }
-        }
-      }
-    },
-    "ОБЛАКО": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "CLOUD"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ОБЛАКО"
-          }
-        }
-      }
-    },
     "ОПЫТНЫЙ": {
       "localizations": {
         "en": {
@@ -4098,23 +3552,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "ОПЫТНЫЙ"
-          }
-        }
-      }
-    },
-    "ОРИГИНАЛ": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ORIGINAL"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ОРИГИНАЛ"
           }
         }
       }
@@ -4147,38 +3584,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "ОСТАЛОСЬ"
-          }
-        }
-      }
-    },
-    "Облако": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Cloud"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Облако"
-          }
-        }
-      }
-    },
-    "Облачный ИИ помогает редактировать заметки. Расшифровка — всегда локально": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Cloud AI helps edit your notes. Transcription stays on-device"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Облачный ИИ помогает редактировать заметки. Расшифровка — всегда локально"
           }
         }
       }
@@ -4339,22 +3744,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Отклонить"
-          }
-        }
-      }
-    },
-    "Отключить": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Disconnect"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Отключить"
           }
         }
       }
@@ -4842,23 +4231,6 @@
         }
       }
     },
-    "Переписать в пост или письмо": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Rewrite as post or email"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Переписать в пост или письмо"
-          }
-        }
-      }
-    },
     "Переписать в пост/письмо": {
       "extractionState": "stale",
       "localizations": {
@@ -4872,23 +4244,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Переписать в пост/письмо"
-          }
-        }
-      }
-    },
-    "Перетащите медиафайл в окно — расшифровка начнётся автоматически": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Drop a media file into the window — transcription starts automatically"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Перетащите медиафайл в окно — расшифровка начнётся автоматически"
           }
         }
       }
@@ -5098,22 +4453,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Подключено"
-          }
-        }
-      }
-    },
-    "Подключить": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Connect"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Подключить"
           }
         }
       }
@@ -5356,22 +4695,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Придумать заголовок"
-          }
-        }
-      }
-    },
-    "Приложение перезапустится автоматически": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "The app will restart automatically"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Приложение перезапустится автоматически"
           }
         }
       }
@@ -5841,23 +5164,6 @@
         }
       }
     },
-    "Расшифровка встреч Zoom, Телемоста и любых медиафайлов: MP3, MP4, WebM": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Transcribe Zoom meetings, conferences and any media files: MP3, MP4, WebM"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Расшифровка встреч Zoom, Телемоста и любых медиафайлов: MP3, MP4, WebM"
-          }
-        }
-      }
-    },
     "Расшифровка...": {
       "localizations": {
         "en": {
@@ -5970,22 +5276,6 @@
         }
       }
     },
-    "Резервный провайдер (Failover)": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Failover Provider"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Резервный провайдер (Failover)"
-          }
-        }
-      }
-    },
     "Релизы": {
       "localizations": {
         "en": {
@@ -6067,23 +5357,6 @@
         }
       }
     },
-    "СВОИ ШАБЛОНЫ": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "OWN TEMPLATES"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "СВОИ ШАБЛОНЫ"
-          }
-        }
-      }
-    },
     "СЕЙЧАС": {
       "localizations": {
         "en": {
@@ -6112,23 +5385,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "СИМВОЛОВ"
-          }
-        }
-      }
-    },
-    "СОХРАНЕНО ЧАСОВ": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "HOURS SAVED"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "СОХРАНЕНО ЧАСОВ"
           }
         }
       }
@@ -6165,23 +5421,6 @@
         }
       }
     },
-    "СТАТИСТИКА": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "STATS"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "СТАТИСТИКА"
-          }
-        }
-      }
-    },
     "СТРАНИЦ А4": {
       "localizations": {
         "en": {
@@ -6194,23 +5433,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "СТРАНИЦ А4"
-          }
-        }
-      }
-    },
-    "Саммари": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Summary"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Саммари"
           }
         }
       }
@@ -6260,40 +5482,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Сбросить к дефолтным"
-          }
-        }
-      }
-    },
-    "Сверка аудио": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Audio check"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Сверка аудио"
-          }
-        }
-      }
-    },
-    "Сводка по расшифровкам, активности и темпу работы за период": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Summary of transcriptions, activity and work pace over a period"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Сводка по расшифровкам, активности и темпу работы за период"
           }
         }
       }
@@ -6508,23 +5696,6 @@
         }
       }
     },
-    "Слушайте исходный звук прямо в заметке, чтобы проверить соответствие с текстом": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Listen to the original audio right in the note to check if it matches the text"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Слушайте исходный звук прямо в заметке, чтобы проверить соответствие с текстом"
-          }
-        }
-      }
-    },
     "Слушать голос": {
       "localizations": {
         "en": {
@@ -6585,23 +5756,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Созвоны Zoom, Телемост и медиафайлы: MP3, MP4, WebM"
-          }
-        }
-      }
-    },
-    "Созвоны и файлы": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Calls & files"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Созвоны и файлы"
           }
         }
       }
@@ -7205,23 +6359,6 @@
         }
       }
     },
-    "ЧАСОВ": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "HOURS"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ЧАСОВ"
-          }
-        }
-      }
-    },
     "ЧАСОВ СОХРАНЕНО": {
       "localizations": {
         "en": {
@@ -7378,22 +6515,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Это действие нельзя отменить."
-          }
-        }
-      }
-    },
-    "Этот промпт нельзя удалить": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "This prompt cannot be deleted"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Этот промпт нельзя удалить"
           }
         }
       }
@@ -7590,18 +6711,18 @@
         }
       }
     },
-    "например: vibevoice-asr-gpu или whisper-1": {
+    "например: whisper-1 или large-v3": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "e.g.: vibevoice-asr-gpu or whisper-1"
+            "value": "e.g.: whisper-1 or large-v3"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "например: vibevoice-asr-gpu или whisper-1"
+            "value": "например: whisper-1 или large-v3"
           }
         }
       }
@@ -7622,22 +6743,6 @@
         }
       }
     },
-    "симв.": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "chars"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "симв."
-          }
-        }
-      }
-    },
     "⌘ + O": {
       "localizations": {
         "en": {
@@ -7650,23 +6755,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "⌘ + O"
-          }
-        }
-      }
-    },
-    "⌘ + O / МЕНЮ": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "⌘ + O / MENU"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "⌘ + O / МЕНЮ"
           }
         }
       }
@@ -7687,220 +6775,50 @@
         }
       }
     },
-    "⌥ + ПРОБЕЛ": {
-      "extractionState": "stale",
+    "Несовпадение сигнатуры": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "⌥ + SPACE"
+            "value": "Signature mismatch"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "⌥ + ПРОБЕЛ"
+            "value": "Несовпадение сигнатуры"
           }
         }
       }
     },
-    "✍️ Переписать в пост/письмо": {
-      "extractionState": "stale",
+    "macOS привязала доступ к старой подписи. Удалите Голосок кнопкой «–» в Настройках и добавьте снова.": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "✍️ Rewrite as post/email"
+            "value": "macOS bound permission to an older signature. Remove Golosok using the \"-\" button in Settings and add it again."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "✍️ Переписать в пост/письмо"
+            "value": "macOS привязала доступ к старой подписи. Удалите Голосок кнопкой «–» в Настройках и добавьте снова."
           }
         }
       }
     },
-    "✨ Улучшить стиль": {
-      "extractionState": "stale",
+    "Передобавить": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "✨ Improve style"
+            "value": "Re-add"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "✨ Улучшить стиль"
-          }
-        }
-      }
-    },
-    "🌐 Перевод на английский": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "🌐 Translate to English"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "🌐 Перевод на английский"
-          }
-        }
-      }
-    },
-    "🏷️ Придумать заголовок": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "🏷️ Suggest a title"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "🏷️ Придумать заголовок"
-          }
-        }
-      }
-    },
-    "💼 Деловой стиль": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "💼 Business tone"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "💼 Деловой стиль"
-          }
-        }
-      }
-    },
-    "📄 Протокол встречи": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "📄 Meeting minutes"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "📄 Протокол встречи"
-          }
-        }
-      }
-    },
-    "📋 Задачи и действия": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "📋 Tasks & action items"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "📋 Задачи и действия"
-          }
-        }
-      }
-    },
-    "📝 Саммари и тезисы": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "📝 Summary & key points"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "📝 Саммари и тезисы"
-          }
-        }
-      }
-    },
-    "🛠 Исправить ошибки": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "🛠 Fix errors"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "🛠 Исправить ошибки"
-          }
-        }
-      }
-    },
-    "Несовпадение сигнатуры" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Signature mismatch"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Несовпадение сигнатуры"
-          }
-        }
-      }
-    },
-    "macOS привязала доступ к старой подписи. Удалите Голосок кнопкой «–» в Настройках и добавьте снова." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "macOS bound permission to an older signature. Remove Golosok using the \"-\" button in Settings and add it again."
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "macOS привязала доступ к старой подписи. Удалите Голосок кнопкой «–» в Настройках и добавьте снова."
-          }
-        }
-      }
-    },
-    "Передобавить" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Re-add"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Передобавить"
+            "value": "Передобавить"
           }
         }
       }
