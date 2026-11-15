@@ -1269,6 +1269,22 @@
         }
       }
     },
+    "Актуальная версия": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Up to date"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Актуальная версия"
+          }
+        }
+      }
+    },
     "Акустический отклик при активации, копировании и ошибках": {
       "localizations": {
         "en": {
