@@ -54,10 +54,16 @@ final class TechTermStore: ObservableObject {
             UserDefaults.standard.set(isAutoLearnEnabled, forKey: "techterms.autoLearn.enabled")
         }
     }
+    @Published private(set) var isVerifyingCandidates = false
+    @Published private(set) var candidateVerificationMessage: LocalizedMessage?
+    @Published private(set) var candidateVerificationIsError = false
 
     private let ioQueue = DispatchQueue(label: "Golosok.TechTermStore.io")
+    private let stateLock = NSRecursiveLock()
     private var compiledRegexCache: [(regex: NSRegularExpression, canonical: String)] = []
-    private var isVerifyingCandidates = false
+    private var verificationStartedAt: Date?
+    private var candidateGeneration = 0
+    private(set) var rulesVersion: Int = 0
 
     private init() {
         self.isReplacementEnabled = UserDefaults.standard.object(forKey: "techterms.replacement.enabled") as? Bool ?? true
@@ -139,7 +145,7 @@ final class TechTermStore: ObservableObject {
     @discardableResult
     func importFromURL(_ url: URL, overwrite: Bool = false) -> (imported: Int, error: String?) {
         guard let data = try? Data(contentsOf: url) else {
-            return (0, "Не удалось прочитать выбранный файл")
+            return (0, L10n.tr("Не удалось прочитать выбранный файл"))
         }
 
         // Поддерживаем как полноценный JSON массив TechTermRule, так и упрощенный формат {"canonical": ["pattern1", "pattern2"]}
@@ -162,7 +168,7 @@ final class TechTermStore: ObservableObject {
         }
 
         guard !incomingRules.isEmpty else {
-            return (0, "Файл не содержит корректных записей словаря (поддерживается JSON)")
+            return (0, L10n.tr("Файл не содержит корректных записей словаря (поддерживается JSON)"))
         }
 
         if overwrite {
@@ -205,10 +211,14 @@ final class TechTermStore: ObservableObject {
     // MARK: - Применение правил автозамены (0 мс задержки)
 
     func applyReplacements(to text: String) -> String {
-        guard isReplacementEnabled, !text.isEmpty, !compiledRegexCache.isEmpty else { return text }
+        guard isReplacementEnabled, !text.isEmpty else { return text }
+        let cacheSnapshot: [(regex: NSRegularExpression, canonical: String)] = stateLock.withLock {
+            compiledRegexCache
+        }
+        guard !cacheSnapshot.isEmpty else { return text }
 
         var result = text
-        for item in compiledRegexCache {
+        for item in cacheSnapshot {
             let range = NSRange(location: 0, length: (result as NSString).length)
             result = item.regex.stringByReplacingMatches(
                 in: result,
@@ -225,6 +235,7 @@ final class TechTermStore: ObservableObject {
     /// Быстрый нечеткий отбор 2–5 наиболее вероятных терминов из словаря для динамической подсказки в LLM
     func findFuzzyCandidateTerms(for text: String, limit: Int = 4) -> [TechTermRule] {
         guard isReplacementEnabled, !text.isEmpty else { return [] }
+        let rulesSnapshot = stateLock.withLock { rules.filter { $0.isEnabled } }
 
         let lowerText = text.lowercased()
         let words = lowerText
@@ -243,7 +254,7 @@ final class TechTermStore: ObservableObject {
 
         var scored: [(rule: TechTermRule, score: Double)] = []
 
-        for rule in rules where rule.isEnabled {
+        for rule in rulesSnapshot {
             var bestScore = 0.0
 
             var targets = [rule.canonical.lowercased()]
@@ -312,13 +323,41 @@ final class TechTermStore: ObservableObject {
         persistCandidates()
     }
 
+    /// Ручное редактирование кандидата до принятия в словарь.
+    func updateCandidate(_ candidate: TechTermCandidate) {
+        guard let idx = candidates.firstIndex(where: { $0.id == candidate.id }) else { return }
+        var updated = candidate
+        updated.canonical = updated.canonical.trimmingCharacters(in: .whitespacesAndNewlines)
+        updated.pattern = updated.pattern.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !updated.canonical.isEmpty, !updated.pattern.isEmpty else { return }
+
+        // Если после правки появился дубликат — объединяем счётчики вместо создания двух записей.
+        if let duplicateIdx = candidates.firstIndex(where: {
+            $0.id != updated.id
+                && $0.canonical.caseInsensitiveCompare(updated.canonical) == .orderedSame
+                && $0.pattern.caseInsensitiveCompare(updated.pattern) == .orderedSame
+        }) {
+            candidates[duplicateIdx].occurrences += updated.occurrences
+            candidates[duplicateIdx].lastSeen = max(candidates[duplicateIdx].lastSeen, updated.lastSeen)
+            candidates.removeAll { $0.id == updated.id }
+        } else {
+            candidates[idx] = updated
+        }
+        persistCandidates()
+    }
+
     func rejectCandidate(_ candidate: TechTermCandidate) {
         candidates.removeAll { $0.id == candidate.id }
         persistCandidates()
     }
 
     func clearCandidates() {
+        candidateGeneration &+= 1
         candidates.removeAll()
+        candidateVerificationMessage = nil
+        candidateVerificationIsError = false
+        isVerifyingCandidates = false
+        verificationStartedAt = nil
         persistCandidates()
     }
 
@@ -366,11 +405,23 @@ final class TechTermStore: ObservableObject {
 
     // MARK: - Автоматическое обучение словаря на основе правок ИИ
 
+    @discardableResult
     func autoLearn(fromRaw rawVoiceText: String, aiCorrected: String) -> Int {
         guard isAutoLearnEnabled, isReplacementEnabled else { return 0 }
         let pairs = extractDiffPairs(raw: rawVoiceText, ai: aiCorrected)
         guard !pairs.isEmpty else { return 0 }
 
+        if Thread.isMainThread {
+            return applyAutoLearnPairsOnMain(pairs)
+        } else {
+            DispatchQueue.main.async { [weak self] in
+                _ = self?.applyAutoLearnPairsOnMain(pairs)
+            }
+            return pairs.count
+        }
+    }
+
+    private func applyAutoLearnPairsOnMain(_ pairs: [(rawPhrase: String, canonical: String)]) -> Int {
         var changesCount = 0
 
         for pair in pairs {
@@ -419,73 +470,172 @@ final class TechTermStore: ObservableObject {
         return changesCount
     }
 
-    /// Пакетная верификация накопленных кандидатов через ИИ (когда накопилось от 5 кандидатов)
+    /// Пакетная верификация накопленных кандидатов через ИИ (когда накопилось от 5 кандидатов).
+    /// Все состояния явные: кнопка показывает прогресс, успех или понятную ошибку.
     func triggerBatchVerificationIfNeeded(force: Bool = false) {
-        guard !isVerifyingCandidates else { return }
+        if isVerifyingCandidates {
+            // Защита от «залипшего» состояния, если сетевой колбэк так и не пришёл.
+            if let started = verificationStartedAt, Date().timeIntervalSince(started) < 180 { return }
+            isVerifyingCandidates = false
+        }
         guard force || candidates.count >= 5 else { return }
-        guard AIProviderStore.shared.isConfigured else { return }
+        guard !candidates.isEmpty else {
+            candidateVerificationMessage = .key("Нет кандидатов для проверки")
+            candidateVerificationIsError = true
+            return
+        }
+        guard AIProviderStore.shared.isConfigured else {
+            candidateVerificationMessage = .key("Сначала настройте основного ИИ-провайдера в разделе ИИ-ПРОВАЙДЕР")
+            candidateVerificationIsError = true
+            AppLogger.shared.warn("TechTerms", "Проверка кандидатов невозможна: ИИ-провайдер не настроен")
+            return
+        }
 
         isVerifyingCandidates = true
+        verificationStartedAt = Date()
+        candidateVerificationMessage = .key("Проверяю кандидатов через ИИ…")
+        candidateVerificationIsError = false
         let snapshot = candidates
+        let generation = candidateGeneration
         let itemsPrompt = snapshot.enumerated().map { idx, c in
             "\(idx + 1). Исходное слово: \"\(c.pattern)\" -> Предложенный термин: \"\(c.canonical)\""
         }.joined(separator: "\n")
 
-        // Загружаем системный промпт верификатора из PromptStore (чтобы пользователь мог его настраивать)
+        // Загружаем системный промпт верификатора из PromptStore (чтобы пользователь мог его настраивать).
+        // Если пользовательский промпт пуст — используем встроенный.
         let validatorTemplate = PromptStore.shared.templates.first(where: { $0.id == "techValidator" })
-        let verifyPrompt = (validatorTemplate?.system ?? AIPromptDefaults.template(id: "techValidator")?.system ?? "")
-            + "\n\nСписок кандидатов для проверки:\n\(itemsPrompt)"
+        let configuredSystem = validatorTemplate?.system.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let fallbackSystem = AIPromptDefaults.template(id: "techValidator")?.system ?? ""
+        let systemPrompt = configuredSystem.isEmpty ? fallbackSystem : configuredSystem
+        let verifyPrompt = systemPrompt + "\n\nСписок кандидатов для проверки:\n\(itemsPrompt)"
 
         let messages = [
             AIChatMessage(role: "system", content: "Ты — API-валидатор терминов. Отвечай только чистым JSON."),
             AIChatMessage(role: "user", content: verifyPrompt)
         ]
 
-        AIService.shared.chat(messages: messages, using: AIProviderStore.shared.config) { [weak self] result in
-            guard let self else { return }
+        AppLogger.shared.info("TechTerms", "Запущена проверка кандидатов через ИИ", details: "кандидатов: \(snapshot.count), модель: \(AIProviderStore.shared.config.model)")
+
+        AIService.shared.chat(messages: messages, using: AIProviderStore.shared.config, timeout: 120) { [weak self] result in
             DispatchQueue.main.async {
+                guard let self, self.candidateGeneration == generation else { return }
                 self.isVerifyingCandidates = false
+                self.verificationStartedAt = nil
                 switch result {
                 case .success(let answer):
-                    self.parseAndApplyVerification(answer: answer, candidatesBatch: snapshot)
+                    let parsed = self.parseAndApplyVerification(answer: answer, candidatesBatch: snapshot)
+                    if parsed.parsed {
+                        self.candidateVerificationMessage = .raw(L10n.format(
+                            "Проверка завершена: одобрено %lld, отклонено %lld",
+                            Int64(parsed.approved),
+                            Int64(parsed.rejected)
+                        ))
+                        self.candidateVerificationIsError = false
+                    } else {
+                        self.candidateVerificationMessage = .key("ИИ вернул ответ в неизвестном формате. Кандидаты не изменены.")
+                        self.candidateVerificationIsError = true
+                    }
                 case .failure(let error):
+                    self.candidateVerificationMessage = .formatted(key: "Не удалось проверить кандидатов: %@", arg: error.localizedDescription)
+                    self.candidateVerificationIsError = true
                     AppLogger.shared.warn("TechTerms", "Пакетная верификация кандидатов через ИИ не удалась", details: error.localizedDescription)
                 }
             }
         }
     }
 
-    private func parseAndApplyVerification(answer: String, candidatesBatch: [TechTermCandidate]) {
-        // Извлекаем JSON из ответа
-        let clean = answer.trimmingCharacters(in: .whitespacesAndNewlines)
-            .replacingOccurrences(of: "```json", with: "")
-            .replacingOccurrences(of: "```", with: "")
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-
-        guard let data = clean.data(using: .utf8),
-              let dict = try? JSONSerialization.jsonObject(with: data) as? [String: Bool] else {
-            AppLogger.shared.warn("TechTerms", "Не удалось разобрать JSON-ответ валидатора", details: clean)
-            return
+    @discardableResult
+    private func parseAndApplyVerification(answer: String, candidatesBatch: [TechTermCandidate]) -> (approved: Int, rejected: Int, parsed: Bool) {
+        guard let decisions = decodeVerificationDecisions(answer) else {
+            AppLogger.shared.warn("TechTerms", "Не удалось разобрать JSON-ответ валидатора", details: answer)
+            return (0, 0, false)
         }
 
         var approvedCount = 0
         var rejectedCount = 0
 
         for (idx, candidate) in candidatesBatch.enumerated() {
-            let key = "\(idx + 1)"
-            if let approved = dict[key] {
-                if approved {
-                    approveCandidate(candidate)
-                    approvedCount += 1
-                } else {
-                    rejectCandidate(candidate)
-                    rejectedCount += 1
-                    AppLogger.shared.warn("TechTerms", "ИИ-валидатор отклонил кандидата", details: "\(candidate.canonical) <- '\(candidate.pattern)'")
-                }
+            guard let approved = decisions[idx + 1] else { continue }
+            if approved {
+                approveCandidate(candidate)
+                approvedCount += 1
+            } else {
+                rejectCandidate(candidate)
+                rejectedCount += 1
+                AppLogger.shared.warn("TechTerms", "ИИ-валидатор отклонил кандидата", details: "\(candidate.canonical) <- '\(candidate.pattern)'")
             }
         }
 
         AppLogger.shared.info("TechTerms", "Пакетная верификация ИИ завершена", details: "Одобрено: \(approvedCount), Отклонено: \(rejectedCount)")
+        return (approvedCount, rejectedCount, true)
+    }
+
+    /// Разбирает ответ модели в формате {"1": true, "2": false} и устойчивые варианты
+    /// вроде markdown-обёрток, строковых значений и массивов approved/rejected.
+    private func decodeVerificationDecisions(_ answer: String) -> [Int: Bool]? {
+        let clean = answer
+            .replacingOccurrences(of: "```json", with: "")
+            .replacingOccurrences(of: "```", with: "")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+
+        let json: String
+        if let start = clean.firstIndex(of: "{"), let end = clean.lastIndex(of: "}"), start <= end {
+            json = String(clean[start...end])
+        } else {
+            json = clean
+        }
+
+        guard let data = json.data(using: .utf8),
+              let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            // Некоторые модели отвечают псевдо-JSON вида {1: true, 2: false} — разбираем терпимо.
+            return decodeLooseDecisions(json)
+        }
+
+        var decisions: [Int: Bool] = [:]
+        for (key, value) in object {
+            guard let index = Int(key) else { continue }
+            if let boolValue = value as? Bool {
+                decisions[index] = boolValue
+            } else if let number = value as? NSNumber {
+                decisions[index] = number.boolValue
+            } else if let string = value as? String {
+                decisions[index] = ["true", "yes", "1", "да", "approve", "approved"].contains(string.lowercased())
+            }
+        }
+
+        if decisions.isEmpty {
+            let approved = (object["approved"] as? [Any])?.compactMap { intValue($0) } ?? []
+            let rejected = (object["rejected"] as? [Any])?.compactMap { intValue($0) } ?? []
+            for index in approved { decisions[index] = true }
+            for index in rejected { decisions[index] = false }
+        }
+
+        return decisions.isEmpty ? decodeLooseDecisions(json) : decisions
+    }
+
+    /// Fallback для ответов вроде `{1: true, 2: false}` без кавычек вокруг ключей.
+    private func decodeLooseDecisions(_ text: String) -> [Int: Bool]? {
+        let pattern = #"(\d+)\s*:\s*(true|false|yes|no|1|0|"true"|"false"|"yes"|"no"|да|нет)"#
+        guard let regex = try? NSRegularExpression(pattern: pattern, options: [.caseInsensitive]) else {
+            return nil
+        }
+        let ns = text as NSString
+        var decisions: [Int: Bool] = [:]
+        for match in regex.matches(in: text, range: NSRange(location: 0, length: ns.length)) {
+            guard match.numberOfRanges >= 3,
+                  let index = Int(ns.substring(with: match.range(at: 1))) else { continue }
+            let raw = ns.substring(with: match.range(at: 2))
+                .trimmingCharacters(in: CharacterSet(charactersIn: "\""))
+                .lowercased()
+            decisions[index] = ["true", "yes", "1", "да"].contains(raw)
+        }
+        return decisions.isEmpty ? nil : decisions
+    }
+
+    private func intValue(_ value: Any) -> Int? {
+        if let number = value as? NSNumber { return number.intValue }
+        if let string = value as? String { return Int(string) }
+        return nil
     }
 
     /// Проверяет, похоже ли искаженное слово на канонический термин или его варианты (защита от галлюцинаций модели)
@@ -698,7 +848,10 @@ final class TechTermStore: ObservableObject {
                 }
             }
         }
-        self.compiledRegexCache = cache
+        stateLock.withLock {
+            self.compiledRegexCache = cache
+            self.rulesVersion &+= 1
+        }
     }
 
     // MARK: - Persistence

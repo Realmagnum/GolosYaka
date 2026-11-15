@@ -45,36 +45,23 @@ struct AboutView: View {
             Divider().background(Color.uiHairline)
             
             // 4. КНОПКИ
-            VStack(spacing: 8) {
-                HStack(spacing: 8) {
-                    AboutLinkButton(title: "GitHub", icon: "terminal.fill") {
-                        openURL(URL(string: "https://github.com/Berliner187/Golosok")!)
-                    }
-                    AboutLinkButton(title: "Сайт", icon: "globe") {
-                        openURL(URL(string: "https://golosok.space")!)
-                    }
+            HStack(spacing: 8) {
+                AboutLinkButton(title: "GitHub", icon: "terminal.fill") {
+                    openURL(URL(string: "https://github.com/Realmagnum/Golosok/")!)
                 }
-                
-                HStack(spacing: 8) {
-                    AboutLinkButton(title: "Поддержка", icon: "envelope") {
-                        openURL(URL(string: "https://telegram.me/fancycode")!)
-                    }
-                    AboutLinkButton(title: "Релизы", icon: "doc.text") {
-                        openURL(URL(string: "https://github.com/Berliner187/Golosok/releases")!)
-                    }
+                AboutLinkButton(title: "Поддержка", icon: "envelope") {
+                    openURL(URL(string: "https://t.me/Realmagnum")!)
+                }
+                AboutLinkButton(title: "Релизы", icon: "doc.text") {
+                    openURL(URL(string: "https://github.com/Realmagnum/Golosok/releases")!)
                 }
             }
             
             Divider().background(Color.uiHairline)
             
-            // 5. КНОПКА ЗАКРЫТИЯ И ПОДВАЛ
+            // 5. КНОПКА ЗАКРЫТИЯ
             HStack {
-                Text("Design & Dev by Kozak • 2026")
-                    .font(.system(size: 10, weight: .medium, design: .monospaced))
-                    .foregroundColor(.uiMidGray)
-                
                 Spacer()
-                
                 UIOutlineButton(title: "Закрыть") {
                     dismiss()
                 }

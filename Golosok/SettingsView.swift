@@ -9,14 +9,12 @@ struct SettingsView: View {
     @ObservedObject var techTerms = TechTermStore.shared
     @ObservedObject var promptStore = PromptStore.shared
     @State private var showingClearHistoryAlert = false
-    @State private var showingAboutSheet = false
     @State private var showingLogsSheet = false
     @State private var showingTechTermsSheet = false
     @State private var showingAddInferenceSheet = false
     @State private var showingPromptManagerSheet = false
     
     var body: some View {
-        ScrollViewReader { proxy in
         ScrollView {
             VStack(spacing: 20) {
                 
@@ -27,7 +25,7 @@ struct SettingsView: View {
                             Text("Язык приложения")
                                 .font(UIStyleFont.body(size: 13, weight: .medium))
                                 .foregroundColor(.uiInk)
-                            Text("Приложение перезапустится автоматически")
+                            Text("Язык интерфейса меняется мгновенно")
                                 .font(UIStyleFont.body(size: 11, weight: .regular))
                                 .foregroundColor(.uiMidGray)
                         }
@@ -119,24 +117,7 @@ struct SettingsView: View {
                                 .labelsHidden()
                                 .toggleStyle(SwitchToggleStyle(tint: Color(hex: "#10B981")))
                         }
-                        
-                        Divider().background(Color.uiHairline)
-                        
-                        HStack {
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text("Делиться аналитикой")
-                                    .font(UIStyleFont.body(size: 13, weight: .medium))
-                                    .foregroundColor(.uiInk)
-                                Text("Автоматическая отправка анонимных метрик производительности")
-                                    .font(UIStyleFont.body(size: 11, weight: .regular))
-                                    .foregroundColor(.uiMidGray)
-                            }
-                            Spacer()
-                            Toggle("", isOn: $audioCapture.analyticsEnabled)
-                                .labelsHidden()
-                                .toggleStyle(SwitchToggleStyle(tint: Color(hex: "#10B981")))
-                        }
-                        
+
                         Divider().background(Color.uiHairline)
                         
                         // 4. Звуки
@@ -245,6 +226,26 @@ struct SettingsView: View {
                                 if hotKey.isCapturingSelection { hotKey.endCaptureSelection() } else { hotKey.beginCaptureSelection() }
                             }
                         }
+
+                        Divider().background(Color.uiHairline)
+
+                        HStack {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Логи приложения")
+                                    .font(UIStyleFont.body(size: 13, weight: .medium))
+                                    .foregroundColor(.uiInk)
+                                Text("Просмотр событий, предупреждений и ошибок приложения")
+                                    .font(UIStyleFont.body(size: 11, weight: .regular))
+                                    .foregroundColor(.uiMidGray)
+                            }
+                            Spacer()
+                            UIOutlineButton(title: "Открыть") {
+                                showingLogsSheet = true
+                            }
+                        }
+                        .sheet(isPresented: $showingLogsSheet) {
+                            LogsView().withAppLocale()
+                        }
                     }
                 }
                 
@@ -277,7 +278,7 @@ struct SettingsView: View {
                             }
                         }
                         .sheet(isPresented: $showingAddInferenceSheet) {
-                            AddCustomInferenceSheet()
+                            AddCustomInferenceSheet().withAppLocale()
                         }
 
                         ActiveModelStatusRow()
@@ -316,7 +317,7 @@ struct SettingsView: View {
                             }
                         }
                         .sheet(isPresented: $showingTechTermsSheet) {
-                            TechTermManagerView()
+                            TechTermManagerView().withAppLocale()
                         }
 
                         if techTerms.isReplacementEnabled && audioCapture.autoAIProcessEnabled {
@@ -338,35 +339,6 @@ struct SettingsView: View {
                             }
                         }
 
-                        Divider().background(Color.uiHairline)
-
-                        HStack {
-                            Text("О программе Golosok")
-                                .font(UIStyleFont.body(size: 13, weight: .medium))
-                                .foregroundColor(.uiInk)
-                            Spacer()
-                            UIOutlineButton(title: "Открыть") {
-                                showingAboutSheet = true
-                            }
-                        }
-                        .sheet(isPresented: $showingAboutSheet) {
-                            AboutView()
-                        }
-
-                        Divider().background(Color.uiHairline)
-
-                        HStack {
-                            Text("Логи приложения")
-                                .font(UIStyleFont.body(size: 13, weight: .medium))
-                                .foregroundColor(.uiInk)
-                            Spacer()
-                            UIOutlineButton(title: "Открыть") {
-                                showingLogsSheet = true
-                            }
-                        }
-                        .sheet(isPresented: $showingLogsSheet) {
-                            LogsView()
-                        }
                     }
                 }
                 
@@ -403,7 +375,7 @@ struct SettingsView: View {
                                 Spacer()
                                 UIDropdownPicker(selection: $audioCapture.autoAIProcessTemplateID, options: promptStore.actionTemplates.map { t in
                                     let isBuiltin = AIPromptDefaults.builtinIDs.contains(t.id)
-                                    let text = (!t.isCustom || isBuiltin) ? String(localized: String.LocalizationValue(t.title)) : t.title
+                                    let text = (!t.isCustom || isBuiltin) ? L10n.tr(t.title) : t.title
                                     return UIDropdownOption(text, icon: t.icon, value: t.id)
                                 }, width: 220)
                             }
@@ -426,17 +398,13 @@ struct SettingsView: View {
                             }
                         }
                         .sheet(isPresented: $showingPromptManagerSheet) {
-                            PromptManagerView()
+                            PromptManagerView().withAppLocale()
                         }
                     }
                 }
 
                 // РАЗДЕЛ 3.5: ИИ-ПРОВАЙДЕР
                 AIProviderSection()
-
-                // РАЗДЕЛ 3.6: АККАУНТ
-                AccountSection()
-                    .id("account")
 
                 // РАЗДЕЛ 4: ДАННЫЕ
                 UICard {
@@ -459,9 +427,6 @@ struct SettingsView: View {
             .padding(20)
         }
         .background(Color.uiCanvas)
-        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("ScrollToAccount"))) { _ in
-            withAnimation(.easeOut(duration: 0.25)) { proxy.scrollTo("account", anchor: .top) }
-        }
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
             permissions.refreshPermissions()
         }
@@ -471,21 +436,27 @@ struct SettingsView: View {
                 audioCapture.clearAllHistory()
             }
         } message: { Text("Все сохраненные транскрипции будут удалены безвозвратно. Это действие нельзя отменить.") }
-        }
     }
 }
 
 struct ActiveModelStatusRow: View {
     @ObservedObject var models = ModelStore.shared
+    @ObservedObject var language = LanguageSettings.shared
 
     var body: some View {
         if let active = models.model(named: models.activeModelID), !active.isBundled {
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(active.isCustom ? active.name : String(localized: String.LocalizationValue(active.name)))
-                        .font(UIStyleFont.body(size: 13, weight: .medium))
-                        .foregroundColor(.uiInk)
-                    Text(active.isCustom ? (active.endpointURL ?? "HTTP API") : "\(active.sizeMB) МБ — Apple Metal")
+                    if active.isCustom {
+                        Text(active.name)
+                            .font(UIStyleFont.body(size: 13, weight: .medium))
+                            .foregroundColor(.uiInk)
+                    } else {
+                        Text(LocalizedStringKey(active.name))
+                            .font(UIStyleFont.body(size: 13, weight: .medium))
+                            .foregroundColor(.uiInk)
+                    }
+                    Text(active.isCustom ? (active.endpointURL ?? "HTTP API") : L10n.format("%lld МБ — Apple Metal", Int64(active.sizeMB)))
                         .font(UIStyleFont.body(size: 11, weight: .regular))
                         .foregroundColor(.uiMidGray)
                 }
@@ -495,7 +466,7 @@ struct ActiveModelStatusRow: View {
                 } else if models.downloadingID == active.id {
                     ProgressView(value: models.downloadProgress)
                         .frame(width: 90)
-                    Text(LocalizedStringKey(models.downloadStatus))
+                    Text(models.downloadStatusState.localized)
                         .font(UIStyleFont.body(size: 11, weight: .regular))
                         .foregroundColor(.uiMidGray)
                     UIOutlineButton(title: "Отмена") { models.cancel() }

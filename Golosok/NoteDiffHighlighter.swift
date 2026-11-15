@@ -2,8 +2,27 @@ import Foundation
 
 /// Модуль расчёта диапазонов слов, заменённых IT-словарём и ИИ-моделью
 struct NoteDiffHighlighter {
+    private struct CacheKey: Equatable {
+        let raw: String?
+        let terms: String?
+        let final: String
+        let rulesVersion: Int
+    }
+
+    private static let cacheLock = NSLock()
+    private static var lastKey: CacheKey?
+    private static var lastResult: (itRanges: [NSRange], aiRanges: [NSRange]) = ([], [])
 
     static func highlightRanges(raw: String?, terms: String?, final: String) -> (itRanges: [NSRange], aiRanges: [NSRange]) {
+        let key = CacheKey(raw: raw, terms: terms, final: final, rulesVersion: TechTermStore.shared.rulesVersion)
+        cacheLock.lock()
+        if lastKey == key {
+            let cached = lastResult
+            cacheLock.unlock()
+            return cached
+        }
+        cacheLock.unlock()
+
         var itRanges: [NSRange] = []
         var aiRanges: [NSRange] = []
         let nsFinal = final as NSString
@@ -93,6 +112,11 @@ struct NoteDiffHighlighter {
             }
         }
 
-        return (itRanges, aiRanges)
+        let result = (itRanges, aiRanges)
+        cacheLock.lock()
+        lastKey = key
+        lastResult = result
+        cacheLock.unlock()
+        return result
     }
 }

@@ -7,11 +7,19 @@ enum StatsRange: String, CaseIterable, Identifiable {
     case week, month, all
     var id: String { rawValue }
 
+    var titleKey: LocalizedStringKey {
+        switch self {
+        case .week: return "7 дней"
+        case .month: return "30 дней"
+        case .all: return "Всё время"
+        }
+    }
+
     var title: String {
         switch self {
-        case .week: return String(localized: "7 дней")
-        case .month: return String(localized: "30 дней")
-        case .all: return String(localized: "Всё время")
+        case .week: return L10n.tr("7 дней")
+        case .month: return L10n.tr("30 дней")
+        case .all: return L10n.tr("Всё время")
         }
     }
 
@@ -170,7 +178,7 @@ struct TimeOfDayChart: View {
         .animation(.easeOut(duration: 0.6), value: revealed)
         .overlay(
             VStack(spacing: 0) {
-                Text(String(localized: "ПИК"))
+                Text(LocalizedStringKey("ПИК"))
                     .font(UIStyleFont.body(size: 9, weight: .bold))
                     .tracking(1.0)
                     .foregroundColor(.uiWarn)
@@ -330,7 +338,7 @@ struct SizeDonutChart: View {
         .animation(.easeOut(duration: 0.6), value: revealed)
         .overlay(
             VStack(spacing: 0) {
-                Text(String(localized: "ЧАЩЕ"))
+                Text(LocalizedStringKey("ЧАЩЕ"))
                     .font(UIStyleFont.body(size: 9, weight: .bold))
                     .tracking(1.0)
                     .foregroundColor(.uiWarn)
@@ -404,7 +412,7 @@ struct WeekdayRhythmChart: View {
                         AxisMarks(values: .automatic) { value in
                             AxisValueLabel() {
                                 if let str = value.as(String.self) {
-                                    Text(str).font(UIStyleFont.body(size: 10, weight: .semibold)).foregroundColor(.uiMidGray)
+                                    Text(LocalizedStringKey(str)).font(UIStyleFont.body(size: 10, weight: .semibold)).foregroundColor(.uiMidGray)
                                 }
                             }
                         }
@@ -425,6 +433,7 @@ struct WeekdayRhythmChart: View {
 struct ActivityChart: View {
     let points: [ActivityPoint]
     let range: StatsRange
+    @ObservedObject private var language = LanguageSettings.shared
     @State private var revealed = false
 
     private var total: Int { points.reduce(0) { $0 + $1.count } }
@@ -440,7 +449,7 @@ struct ActivityChart: View {
                             .font(UIStyleFont.display(size: 12, weight: .bold))
                             .foregroundColor(.uiInk)
                             .contentTransition(.numericText())
-                        Text(String(localized: "ЗАМЕТОК"))
+                        Text(LocalizedStringKey("ЗАМЕТОК"))
                             .font(UIStyleFont.body(size: 10, weight: .bold))
                             .tracking(0.6)
                             .foregroundColor(.uiMidGray)
@@ -497,7 +506,7 @@ struct ActivityChart: View {
                         AxisMarks(values: .stride(by: .day, count: xStride)) { value in
                             AxisValueLabel {
                                 if let date = value.as(Date.self) {
-                                    Text(Self.dayFormatter.string(from: date))
+                                    Text(formattedDay(date))
                                         .font(UIStyleFont.body(size: 9, weight: .semibold))
                                         .foregroundColor(.uiMidGray)
                                 }
@@ -536,12 +545,24 @@ struct ActivityChart: View {
         }
     }
 
-    private static let dayFormatter: DateFormatter = {
+    private static let formatterLock = NSLock()
+    private static var cachedLocaleID: String = ""
+    private static var dayFormatter: DateFormatter = {
         let df = DateFormatter()
-        df.locale = Locale.current
         df.dateFormat = "d MMM"
         return df
     }()
+
+    private func formattedDay(_ date: Date) -> String {
+        let locale = language.locale
+        Self.formatterLock.lock()
+        defer { Self.formatterLock.unlock() }
+        if Self.cachedLocaleID != locale.identifier {
+            Self.cachedLocaleID = locale.identifier
+            Self.dayFormatter.locale = locale
+        }
+        return Self.dayFormatter.string(from: date)
+    }
 }
 
 // MARK: - Последние заметки (множество полос)
@@ -559,7 +580,7 @@ struct RecentNotesChart: View {
         UICard {
             VStack(alignment: .leading, spacing: 12) {
                 ChartCardHeader(title: "ПОСЛЕДНИЕ ЗАМЕТКИ") {
-                    Text(String(localized: "СИМВОЛОВ"))
+                    Text(LocalizedStringKey("СИМВОЛОВ"))
                         .font(UIStyleFont.body(size: 10, weight: .bold))
                         .tracking(0.6)
                         .foregroundColor(.uiMidGray)
@@ -588,11 +609,11 @@ struct RecentNotesChart: View {
                 }
 
                 HStack(spacing: 4) {
-                    Text(String(localized: "НАЧАЛО ПЕРИОДА"))
+                    Text(LocalizedStringKey("НАЧАЛО ПЕРИОДА"))
                         .font(UIStyleFont.body(size: 9, weight: .medium))
                         .foregroundColor(.uiMidGray)
                     Spacer()
-                    Text(String(localized: "СЕЙЧАС"))
+                    Text(LocalizedStringKey("СЕЙЧАС"))
                         .font(UIStyleFont.body(size: 9, weight: .medium))
                         .foregroundColor(.uiMidGray)
                 }
@@ -607,6 +628,7 @@ struct RecentNotesChart: View {
 
 struct LevelProgressChart: View {
     let progress: LevelProgress
+    @ObservedObject private var language = LanguageSettings.shared
     @State private var revealed = false
 
     var body: some View {
@@ -619,7 +641,7 @@ struct LevelProgressChart: View {
                         Text("\(progress.current)")
                             .font(UIStyleFont.display(size: 30, weight: .bold))
                             .foregroundColor(.uiInk)
-                        Text(String(localized: "ВЫ ДОСТИГЛИ ВЕРШИНЫ"))
+                        Text(LocalizedStringKey("ВЫ ДОСТИГЛИ ВЕРШИНЫ"))
                             .font(UIStyleFont.body(size: 10, weight: .bold))
                             .tracking(0.8)
                             .foregroundColor(.uiWarn)
@@ -634,7 +656,7 @@ struct LevelProgressChart: View {
                                 .font(UIStyleFont.body(size: 13, weight: .regular))
                                 .foregroundColor(.uiMidGray)
                             Spacer()
-                            Text("\(String(localized: "ОСТАЛОСЬ")) \(max(0, progress.nextThreshold - progress.current)) \(String(localized: "ДО")) \(progress.nextLevel)")
+                            Text("\(L10n.tr("ОСТАЛОСЬ")) \(max(0, progress.nextThreshold - progress.current)) \(L10n.tr("ДО")) \(L10n.tr(progress.nextLevel))")
                                 .font(UIStyleFont.body(size: 10, weight: .bold))
                                 .tracking(0.5)
                                 .foregroundColor(.uiWarn)

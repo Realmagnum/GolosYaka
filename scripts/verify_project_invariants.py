@@ -58,12 +58,24 @@ def check_localization_integrity():
 
 def check_unlocalized_ui_strings():
     errors = []
-    # Match UI string declarations that have Cyrillic literals
+    # Match UI string declarations that have Cyrillic literals or explicit localization calls
     patterns = [
         (re.compile(r'Text\(\s*"([^"]*[а-яА-ЯёЁ][^"]*)"\s*\)'), "Text(...) raw string"),
         (re.compile(r'Button\(\s*"([^"]*[а-яА-ЯёЁ][^"]*)"\s*\)'), "Button(...) raw string"),
         (re.compile(r'UIOutlineButton\(\s*title:\s*"([^"]*[а-яА-ЯёЁ][^"]*)"'), "UIOutlineButton raw title"),
+        (re.compile(r'UIPrimaryButton\(\s*title:\s*"([^"]*[а-яА-ЯёЁ][^"]*)"'), "UIPrimaryButton raw title"),
         (re.compile(r'UIDestructiveButton\(\s*title:\s*"([^"]*[а-яА-ЯёЁ][^"]*)"'), "UIDestructiveButton raw title"),
+        (re.compile(r'Label\(\s*"([^"]*[а-яА-ЯёЁ][^"]*)"'), "Label(...) raw title"),
+        (re.compile(r'TextField\(\s*"([^"]*[а-яА-ЯёЁ][^"]*)"'), "TextField(...) raw placeholder"),
+        (re.compile(r'SecureField\(\s*"([^"]*[а-яА-ЯёЁ][^"]*)"'), "SecureField(...) raw placeholder"),
+        (re.compile(r'UIBadge\(\s*text:\s*"([^"]*[а-яА-ЯёЁ][^"]*)"'), "UIBadge(...) raw text"),
+        (re.compile(r'\.help\(\s*"([^"]*[а-яА-ЯёЁ][^"]*)"\s*\)'), ".help(...) raw string"),
+        (re.compile(r'String\(\s*localized:\s*"([^"\\]*(?:\\.[^"\\]*)*)"'), "String(localized:)"),
+        (re.compile(r'LocalizedStringKey\(\s*"([^"\\]*(?:\\.[^"\\]*)*)"'), "LocalizedStringKey(...)"),
+        (re.compile(r'L10n\.tr\(\s*"([^"\\]*(?:\\.[^"\\]*)*)"'), "L10n.tr(...)"),
+        (re.compile(r'L10n\.format\(\s*"([^"\\]*(?:\\.[^"\\]*)*)"'), "L10n.format(...)"),
+        (re.compile(r'\.key\(\s*"([^"\\]*(?:\\.[^"\\]*)*)"'), "LocalizedMessage.key(...)"),
+        (re.compile(r'\.formatted\(\s*key:\s*"([^"\\]*(?:\\.[^"\\]*)*)"'), "LocalizedMessage.formatted(...)"),
     ]
 
     with open(XCSTRINGS_PATH, "r", encoding="utf-8") as f:
@@ -78,9 +90,13 @@ def check_unlocalized_ui_strings():
                 for pat, desc in patterns:
                     for m in pat.finditer(line):
                         raw_text = m.group(1).strip()
+                        if r'\(' in raw_text:
+                            errors.append(f"{swift_path.name}:{line_no} [{desc}] -> interpolated string \"{raw_text}\" must use String(format: String(localized: ...))!")
+                            continue
+                        unescaped = raw_text.replace("\\n", "\n").replace('\\"', '"')
                         # If the literal is not present as a key in xcstrings, it is a hard violation
-                        if raw_text not in xc_keys:
-                            errors.append(f"{swift_path.name}:{line_no} [{desc}] -> \"{raw_text}\" is not in Localizable.xcstrings!")
+                        if unescaped not in xc_keys:
+                            errors.append(f"{swift_path.name}:{line_no} [{desc}] -> \"{unescaped}\" is not in Localizable.xcstrings!")
 
     return errors
 

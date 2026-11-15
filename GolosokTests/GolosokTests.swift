@@ -51,6 +51,7 @@ struct GolosokTests {
         #expect(TextFormatter.normalizeRussianNumbers("ноль и одна задача") == "ноль и 1 задача")
         #expect(TextFormatter.normalizeRussianNumbers("код 123, версия два.") == "код 123, версия 2.")
         #expect(TextFormatter.normalizeRussianNumbers("пять, шесть.") == "5, 6.")
+        #expect(TextFormatter.normalizeRussianNumbers("двадцать, пять, шесть и семь") == "20, 5, 6 и 7")
     }
 
     @Test func boundaryDuplicateIsRemovedButDifferentWordsRemain() {
@@ -77,7 +78,7 @@ struct GolosokTests {
         let stats = DashboardCalculator.calculate(from: [])
         #expect(stats.totalNotes == 0)
         #expect(stats.hoursSaved == "0.00")
-        #expect(stats.levelName == String(localized: "НОВИЧОК"))
+        #expect(stats.levelName == "НОВИЧОК")
         #expect(stats.wpm == 0)
     }
 
@@ -245,6 +246,16 @@ struct GolosokTests {
         #expect(ranges[0] == NSRange(location: 0, length: 6))
         #expect(ranges[1].location == NSNotFound)
         #expect(ranges[2] == NSRange(location: 7, length: 3))
+    }
+
+    @Test func replacedTermInterpolatesGapRange() {
+        let text = "привет Tailscale мир"
+        let words = timedWords(["привет", "тейлскейл", "мир"])
+        let ranges = wordRanges(text, words)
+        #expect(ranges.count == 3)
+        #expect(ranges[0] == NSRange(location: 0, length: 6))
+        #expect(ranges[1] == NSRange(location: 7, length: 9))
+        #expect(ranges[2] == NSRange(location: 17, length: 3))
     }
 
     @Test func punctuationAttachedToTokensStillAligns() {
@@ -478,5 +489,39 @@ struct AISelectionStatefulTests {
 
         store.replaceRangeInNote(id: id, range: NSRange(location: NSNotFound, length: 5), newText: "Вторжение")
         #expect(store.history.first(where: { $0.id == id })?.text == initial)
+    }
+
+    @Test func liveLanguageSwitchUpdatesLocaleRevisionAndDateFormatting() {
+        let lang = LanguageSettings.shared
+        let original = lang.current
+        defer { lang.select(original) }
+
+        lang.select(.ru)
+        #expect(lang.effectiveCode == "ru")
+        #expect(lang.locale.identifier == "ru_RU")
+        let ruFormatted = DateFormattingHelper.formatRussianDate("12.11.2026, 14:30")
+        #expect(ruFormatted.date.lowercased().contains("нояб"))
+        #expect(ruFormatted.time == "14:30")
+
+        let revBefore = lang.revision
+        lang.select(.en)
+        #expect(lang.effectiveCode == "en")
+        #expect(lang.locale.identifier == "en_US")
+        #expect(lang.revision > revBefore)
+        let enFormatted = DateFormattingHelper.formatRussianDate("12.11.2026, 14:30")
+        #expect(enFormatted.date.lowercased().contains("november"))
+        #expect(enFormatted.time == "14:30")
+
+        lang.select(.system)
+        #expect(lang.effectiveCode == "ru" || lang.effectiveCode == "en")
+    }
+
+    @Test func localizedMessagesAndDownloadStatusesRemainKeyed() {
+        let msg = LocalizedMessage.key("Речь не распознана")
+        #expect(msg == .key("Речь не распознана"))
+        let modelDone = ModelDownloadStatus.ready
+        #expect(modelDone == .ready)
+        let updConn = UpdateDownloadStatus.connecting
+        #expect(updConn == .connecting)
     }
 }

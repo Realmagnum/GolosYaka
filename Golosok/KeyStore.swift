@@ -13,6 +13,7 @@ enum KeyStore {
 
     private static var memoryCache: [String: String] = [:]
     private static var isPreloaded = false
+    private static var packLoadFailed = false
     private static let lock = NSRecursiveLock()
 
     /// Разово загружает единый пакет секретов при старте приложения.
@@ -42,11 +43,21 @@ enum KeyStore {
         if status == errSecSuccess, let data = result as? Data {
             if let dict = try? JSONDecoder().decode([String: String].self, from: data) {
                 memoryCache = dict
+                packLoadFailed = false
+            } else {
+                packLoadFailed = true
+                AppLogger.shared.warn("KeyStore", "Не удалось декодировать пакет секретов Keychain")
             }
             // Проверяем и подчищаем остатки legacy UserDefaults, если они были
             if migrateUserDefaultsOnlyLocked() {
                 savePackToKeychainLocked()
             }
+            return
+        }
+
+        if status != errSecItemNotFound {
+            packLoadFailed = true
+            AppLogger.shared.warn("KeyStore", "Доступ к Keychain отклонён или недоступен (OSStatus \(status))")
             return
         }
 
@@ -152,6 +163,32 @@ enum KeyStore {
 
     /// Сохраняет весь словарь memoryCache в единственный элемент Keychain.
     private static func savePackToKeychainLocked() {
+        if packLoadFailed {
+            // Если при старте не удалось прочитать существующий пакет (например, пользователь отклонил доступ),
+            // пробуем дочитать и объединить перед записью, чтобы не затереть остальные ключи.
+            let readQuery: [String: Any] = [
+                kSecClass as String: kSecClassGenericPassword,
+                kSecAttrService as String: serviceName,
+                kSecAttrAccount as String: packAccount,
+                kSecReturnData as String: true,
+                kSecMatchLimit as String: kSecMatchLimitOne
+            ]
+            var result: CFTypeRef?
+            let readStatus = SecItemCopyMatching(readQuery as CFDictionary, &result)
+            if readStatus == errSecSuccess, let data = result as? Data,
+               let existing = try? JSONDecoder().decode([String: String].self, from: data) {
+                for (k, v) in existing where memoryCache[k] == nil {
+                    memoryCache[k] = v
+                }
+                packLoadFailed = false
+            } else if readStatus == errSecItemNotFound {
+                packLoadFailed = false
+            } else {
+                AppLogger.shared.warn("KeyStore", "Отмена перезаписи Keychain-пакета: исходные ключи недоступны (OSStatus \(readStatus))")
+                return
+            }
+        }
+
         guard let data = try? JSONEncoder().encode(memoryCache) else { return }
 
         let query: [String: Any] = [

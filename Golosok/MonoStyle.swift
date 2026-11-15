@@ -185,7 +185,8 @@ struct UIPrimaryButton: View {
 struct UIBadge: View {
     let text: String
     var body: some View {
-        Text(text.uppercased())
+        Text(LocalizedStringKey(text))
+            .textCase(.uppercase)
             .font(UIStyleFont.body(size: 10, weight: .semibold))
             .tracking(0.5)
             .foregroundColor(.uiMidGray)

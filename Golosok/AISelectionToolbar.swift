@@ -12,6 +12,7 @@ final class AISelectionToolbarState: ObservableObject {
 struct AISelectionToolbarContent: View {
     let templates: [AIPromptTemplate]
     @ObservedObject var state: AISelectionToolbarState
+    @ObservedObject private var language = LanguageSettings.shared
     let onPick: (AIPromptTemplate) -> Void
 
     var body: some View {
@@ -33,7 +34,7 @@ struct AISelectionToolbarContent: View {
                     .background(Color.uiCanvas)
                     .cornerRadius(6)
                     .overlay(RoundedRectangle(cornerRadius: 6).stroke(Color.uiHairline, lineWidth: 1))
-                    .help(String(localized: "Только выделенный фрагмент"))
+                    .help(LocalizedStringKey("Только выделенный фрагмент"))
             }
             .padding(.horizontal, 10)
             .padding(.top, 9)
@@ -79,6 +80,7 @@ struct AISelectionToolbarContent: View {
         )
         .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
         .shadow(color: .black.opacity(0.10), radius: 14, x: 0, y: 6)
+        .environment(\.locale, language.locale)
     }
 }
 

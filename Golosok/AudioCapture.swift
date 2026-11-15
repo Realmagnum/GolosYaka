@@ -54,6 +54,41 @@ struct SubtitleCue: Equatable {
     let text: String
 }
 
+enum TranscriptionPipelinePhase: Equatable {
+    case idle
+    case recording
+    case transcribing
+    case extractingAudio
+    case retranscribing
+    case aiTransforming
+    case completed
+    case cancelled
+    case micDenied
+}
+
+enum UpdateDownloadStatus: Equatable {
+    case idle
+    case connecting
+    case progress(writtenMB: Double, totalMB: Double, percent: Int)
+    case opening
+    case failed
+
+    var localized: String {
+        switch self {
+        case .idle:
+            return ""
+        case .connecting:
+            return L10n.tr("Подключение...")
+        case .progress(let written, let total, let percent):
+            return L10n.format("%.0f / %.0f МБ (%d%%)", written, total, percent)
+        case .opening:
+            return L10n.tr("Открытие...")
+        case .failed:
+            return L10n.tr("Ошибка")
+        }
+    }
+}
+
 class AudioCapture: NSObject, ObservableObject, AVAudioRecorderDelegate {
     static let shared = AudioCapture()
     
@@ -68,15 +103,16 @@ class AudioCapture: NSObject, ObservableObject, AVAudioRecorderDelegate {
     @Published var isRecording = false
     @Published var isProcessingFile = false
     @Published var fileProcessingProgress: Double = 0.0
+    @Published var pipelinePhase: TranscriptionPipelinePhase = .idle
     @Published var transcribedText = ""
-    @Published var warningMessage: String? = nil
+    @Published var warningMessage: LocalizedMessage? = nil
     @Published var audioSamples: [Float] = Array(repeating: 0.15, count: 18)
     @Published var formattedRecordingTime: String = "00:00"
     
     // АПДЕЙТЫ
     @Published var updateInfo: UpdateInfo? = nil
     @Published var isDownloadingUpdate = false
-    @Published var updateProgressText: String = ""
+    @Published var updateProgressStatus: UpdateDownloadStatus = .idle
     private var downloadTask: URLSessionDownloadTask?
     
     @Published var playingItemId: UUID? = nil
@@ -92,7 +128,7 @@ class AudioCapture: NSObject, ObservableObject, AVAudioRecorderDelegate {
     @Published var isHoveringAICancel = false
 
     /// Запуск индикации работы ИИ-обработки выделения в оверлее
-    func startAIProcessing(status: String = String(localized: "ИИ-обработка...")) {
+    func startAIProcessing(status: String = "ИИ-обработка...") {
         DispatchQueue.main.async {
             self.warningMessage = nil
             self.isSuccessDone = false
@@ -114,7 +150,7 @@ class AudioCapture: NSObject, ObservableObject, AVAudioRecorderDelegate {
     }
 
     /// Отмена или ошибка ИИ-обработки
-    func cancelAIProcessing(warning: String? = nil) {
+    func cancelAIProcessing(warning: LocalizedMessage? = nil) {
         DispatchQueue.main.async {
             self.aiStatusText = nil
             self.isHoveringAICancel = false
@@ -140,9 +176,6 @@ class AudioCapture: NSObject, ObservableObject, AVAudioRecorderDelegate {
     }
     @Published var autoAIProcessTemplateID: String = UserDefaults.standard.string(forKey: "ai.autoProcess.templateID") ?? "restoreTechTerms" {
         didSet { UserDefaults.standard.set(autoAIProcessTemplateID, forKey: "ai.autoProcess.templateID") }
-    }
-    @Published var analyticsEnabled: Bool = UserDefaults.standard.object(forKey: "analyticsEnabled") as? Bool ?? true {
-        didSet { UserDefaults.standard.set(analyticsEnabled, forKey: "analyticsEnabled") }
     }
     @Published var launchAtLoginEnabled: Bool = UserDefaults.standard.bool(forKey: "launchAtLoginEnabled") {
         didSet {
@@ -170,10 +203,6 @@ class AudioCapture: NSObject, ObservableObject, AVAudioRecorderDelegate {
     override init() {
         super.init()
         
-        if UserDefaults.standard.object(forKey: "analyticsEnabled") == nil {
-            self.analyticsEnabled = true
-        }
-
         let currentVer = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? ""
         if let lastActive = UserDefaults.standard.string(forKey: "lastActiveVersion"), lastActive != currentVer {
             UserDefaults.standard.removeObject(forKey: "cachedUpdateInfo")
@@ -186,17 +215,6 @@ class AudioCapture: NSObject, ObservableObject, AVAudioRecorderDelegate {
         loadHistory()
         DispatchQueue.main.asyncAfter(deadline: .now() + 4.5) { [weak self] in
             self?.checkUpdates()
-        }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 5.0) { [weak self] in
-            guard self != nil else { return }
-            let launchCount = UserDefaults.standard.integer(forKey: "launch_count") + 1
-            UserDefaults.standard.set(launchCount, forKey: "launch_count")
-            Telemetry.shared.event("app_launch", [
-                "launch_count": launchCount,
-                "mic_granted": AVCaptureDevice.authorizationStatus(for: .audio) == .authorized,
-                "accessibility_granted": PermissionManager.shared.isAccessibilityGranted,
-                "model_id": ModelStore.shared.activeModelID
-            ])
         }
         DispatchQueue.main.asyncAfter(deadline: .now() + 6.0) { [weak self] in
             guard let self else { return }
@@ -234,8 +252,9 @@ class AudioCapture: NSObject, ObservableObject, AVAudioRecorderDelegate {
         DispatchQueue.main.async {
             self.warningMessage = nil
             self.isRecording = false
+            self.pipelinePhase = .cancelled
             self.audioSamples = Array(repeating: 0.15, count: 9)
-            self.transcribedText = String(localized: "Запись отменена")
+            self.transcribedText = L10n.tr("Запись отменена")
             OverlayPanelManager.shared.hideOverlay()
         }
     }
@@ -249,7 +268,10 @@ class AudioCapture: NSObject, ObservableObject, AVAudioRecorderDelegate {
             }
             return
         case .denied, .restricted:
-            DispatchQueue.main.async { self.transcribedText = String(localized: "Нет доступа к микрофону.") }
+            DispatchQueue.main.async {
+                self.pipelinePhase = .micDenied
+                self.transcribedText = L10n.tr("Нет доступа к микрофону.")
+            }
             return
         case .authorized: break
         @unknown default: break
@@ -280,7 +302,8 @@ class AudioCapture: NSObject, ObservableObject, AVAudioRecorderDelegate {
             DispatchQueue.main.async {
                 self.warningMessage = nil
                 self.isRecording = true
-                self.transcribedText = String(localized: "Запись идет...")
+                self.pipelinePhase = .recording
+                self.transcribedText = L10n.tr("Запись идет...")
                 OverlayPanelManager.shared.showOverlay()
             }
             let meteringTimer = Timer(timeInterval: 0.05, repeats: true) { [weak self] _ in self?.updateMetering() }
@@ -305,8 +328,9 @@ class AudioCapture: NSObject, ObservableObject, AVAudioRecorderDelegate {
             self.isRecording = false
             self.isProcessingFile = false
             self.fileProcessingProgress = 0.0
+            self.pipelinePhase = .transcribing
             self.audioSamples = Array(repeating: 0.15, count: 9)
-            self.transcribedText = String(localized: "Расшифровка...")
+            self.transcribedText = L10n.tr("Расшифровка...")
         }
         
         DispatchQueue.global(qos: .utility).async {
@@ -379,7 +403,8 @@ class AudioCapture: NSObject, ObservableObject, AVAudioRecorderDelegate {
             self.warningMessage = nil
             self.isProcessingFile = true
             self.fileProcessingProgress = 0.0
-            self.transcribedText = String(localized: "Извлечение аудио...")
+            self.pipelinePhase = .extractingAudio
+            self.transcribedText = L10n.tr("Извлечение аудио...")
             OverlayPanelManager.shared.showOverlay()
         }
         DispatchQueue.global(qos: .utility).async {
@@ -395,6 +420,7 @@ class AudioCapture: NSObject, ObservableObject, AVAudioRecorderDelegate {
         guard index < urls.count else {
             DispatchQueue.main.async {
                 self.isProcessingFile = false
+                self.pipelinePhase = .idle
                 OverlayPanelManager.shared.scheduleHide(after: 0.8)
             }
             return
@@ -404,7 +430,8 @@ class AudioCapture: NSObject, ObservableObject, AVAudioRecorderDelegate {
             self.warningMessage = nil
             self.isProcessingFile = true
             self.fileProcessingProgress = 0.0
-            self.transcribedText = String(localized: "Извлечение аудио...")
+            self.pipelinePhase = .extractingAudio
+            self.transcribedText = L10n.tr("Извлечение аудио...")
             OverlayPanelManager.shared.showOverlay()
         }
         DispatchQueue.global(qos: .utility).async { [weak self] in
@@ -434,7 +461,12 @@ class AudioCapture: NSObject, ObservableObject, AVAudioRecorderDelegate {
             if let completion {
                 completion()
             } else {
-                DispatchQueue.main.async { self.isProcessingFile = false }
+                DispatchQueue.main.async {
+                    self.isProcessingFile = false
+                    if self.pipelinePhase == .transcribing || self.pipelinePhase == .extractingAudio || self.pipelinePhase == .aiTransforming {
+                        self.pipelinePhase = .idle
+                    }
+                }
             }
         }
         
@@ -446,7 +478,8 @@ class AudioCapture: NSObject, ObservableObject, AVAudioRecorderDelegate {
             
             if !conversionSuccess {
                 DispatchQueue.main.async {
-                    OverlayPanelManager.shared.showWarning(message: String(localized: "Не удалось извлечь аудио"))
+                    self.pipelinePhase = .idle
+                    OverlayPanelManager.shared.showWarning(message: .key("Не удалось извлечь аудио"))
                 }
                 finish()
                 return
@@ -455,7 +488,8 @@ class AudioCapture: NSObject, ObservableObject, AVAudioRecorderDelegate {
         
         guard let inputFile = try? AVAudioFile(forReading: sourceURL) else {
             DispatchQueue.main.async {
-                OverlayPanelManager.shared.showWarning(message: String(localized: "Ошибка чтения файла"))
+                self.pipelinePhase = .idle
+                OverlayPanelManager.shared.showWarning(message: .key("Ошибка чтения файла"))
             }
             finish()
             return
@@ -466,8 +500,8 @@ class AudioCapture: NSObject, ObservableObject, AVAudioRecorderDelegate {
         let realAudioSecs = isFileImport ? (Double(totalFrames) / sampleRate) : audioDurationSec
         
         let durationFormatted: String
-        if realAudioSecs >= 60.0 { durationFormatted = String(format: String(localized: "%.0f мин"), realAudioSecs / 60.0) }
-        else { durationFormatted = String(format: String(localized: "%.0f сек"), realAudioSecs.rounded()) }
+        if realAudioSecs >= 60.0 { durationFormatted = L10n.format("%.0f мин", realAudioSecs / 60.0) }
+        else { durationFormatted = L10n.format("%.0f сек", realAudioSecs.rounded()) }
         
         let chunkSizeInSeconds: Double = 25.0
         
@@ -496,7 +530,7 @@ class AudioCapture: NSObject, ObservableObject, AVAudioRecorderDelegate {
                 if writeBufferToWav(buffer: pcmBuffer, targetFormat: targetFormat, outputURL: chunkWavURL) {
                     let chunkResult = runCLIOnWav(wavURL: chunkWavURL, initialPrompt: accumulatedText.last)
                     let chunkText = Self.removeBoundaryDuplicate(previous: accumulatedWordTexts.joined(separator: " "), current: chunkResult.text)
-                    if !chunkText.isEmpty && chunkText != String(localized: "Речь не распознана") { accumulatedText.append(chunkText) }
+                    if !chunkText.isEmpty && chunkText != L10n.tr("Речь не распознана") && chunkText != "Речь не распознана" { accumulatedText.append(chunkText) }
                     if chunkResult.words.isEmpty {
                         accumulatedWordTexts.append(contentsOf: chunkText.split(whereSeparator: \.isWhitespace).map(String.init))
                     }
@@ -532,7 +566,9 @@ class AudioCapture: NSObject, ObservableObject, AVAudioRecorderDelegate {
             let templateID = autoAIProcessTemplateID
             if let template = PromptStore.shared.templates.first(where: { $0.id == templateID }) ?? PromptStore.shared.templates.first {
                 DispatchQueue.main.async {
-                    self.transcribedText = "ИИ: \(template.title)…"
+                    self.pipelinePhase = .aiTransforming
+                    let title = (!template.isCustom || AIPromptDefaults.builtinIDs.contains(template.id)) ? L10n.tr(template.title) : template.title
+                    self.transcribedText = L10n.format("ИИ: %@…", title)
                 }
                 let semaphore = DispatchSemaphore(value: 0)
                 let dynamicCandidates = TechTermStore.shared.findFuzzyCandidateTerms(for: termsCorrectedText, limit: 4)
@@ -563,9 +599,10 @@ class AudioCapture: NSObject, ObservableObject, AVAudioRecorderDelegate {
         DispatchQueue.main.async {
             if prettyFormattedText.isEmpty {
                 AppLogger.shared.warn("Recognition", "Речь не распознана", details: String(format: "аудио %.1f с", realAudioSecs))
-                Telemetry.shared.event("dictation_failed", ["audio_duration_sec": realAudioSecs])
-                OverlayPanelManager.shared.showWarning(message: String(localized: "Речь не распознана"))
+                self.pipelinePhase = .idle
+                OverlayPanelManager.shared.showWarning(message: .key("Речь не распознана"))
             } else {
+                self.pipelinePhase = .completed
                 self.transcribedText = prettyFormattedText
                 self.isSuccessDone = true
                 let formatter = DateFormatter()
@@ -607,7 +644,6 @@ class AudioCapture: NSObject, ObservableObject, AVAudioRecorderDelegate {
                 }
             }
             
-            self.sendTelemetry(eventType: isFileImport ? "file_import" : "dictation", audioDurationSec: realAudioSecs, characterCount: rawText.count, speedup: calculatedSpeedup)
             finish()
         }
     }
@@ -687,7 +723,7 @@ class AudioCapture: NSObject, ObservableObject, AVAudioRecorderDelegate {
         formatter.dateFormat = "dd.MM.yyyy, HH:mm"
         let dateStr = formatter.string(from: Date())
 
-        let afterLabel = String(localized: "Стало")
+        let afterLabel = L10n.tr("Стало")
 
         let combined = """
         \(originalText.trimmingCharacters(in: .whitespacesAndNewlines))
@@ -848,6 +884,15 @@ class AudioCapture: NSObject, ObservableObject, AVAudioRecorderDelegate {
             NotificationCenter.default.post(name: NSNotification.Name("NoteTimingsUpdated"), object: id)
         }
     }
+
+    private func deleteTimingsForNote(id: UUID) {
+        if let url = timingsFileURL(for: id), FileManager.default.fileExists(atPath: url.path) {
+            try? FileManager.default.removeItem(at: url)
+        }
+        DispatchQueue.main.async {
+            NotificationCenter.default.post(name: NSNotification.Name("NoteTimingsUpdated"), object: id)
+        }
+    }
     
     func timings(for id: UUID) -> (words: [TimedWord], duration: Double)? {
         guard let result = readTimings(for: id) else { return nil }
@@ -882,17 +927,18 @@ class AudioCapture: NSObject, ObservableObject, AVAudioRecorderDelegate {
             self.warningMessage = nil
             self.isProcessingFile = true
             self.fileProcessingProgress = 0.0
-            self.transcribedText = String(localized: "Повторное распознавание...")
+            self.pipelinePhase = .retranscribing
+            self.transcribedText = L10n.tr("Повторное распознавание...")
             OverlayPanelManager.shared.showOverlay()
         }
 
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
             guard let self else { return }
-            let processStartTime = Date()
 
             guard let inputFile = try? AVAudioFile(forReading: audioURL) else {
                 DispatchQueue.main.async {
-                    OverlayPanelManager.shared.showWarning(message: String(localized: "Ошибка чтения файла"))
+                    self.pipelinePhase = .idle
+                    OverlayPanelManager.shared.showWarning(message: .key("Ошибка чтения файла"))
                     self.isProcessingFile = false
                     completion?(false)
                 }
@@ -930,7 +976,7 @@ class AudioCapture: NSObject, ObservableObject, AVAudioRecorderDelegate {
                     if self.writeBufferToWav(buffer: pcmBuffer, targetFormat: targetFormat, outputURL: chunkWavURL) {
                         let chunkResult = self.runCLIOnWav(wavURL: chunkWavURL, initialPrompt: accumulatedText.last)
                         let chunkText = Self.removeBoundaryDuplicate(previous: accumulatedWordTexts.joined(separator: " "), current: chunkResult.text)
-                        if !chunkText.isEmpty && chunkText != String(localized: "Речь не распознана") {
+                        if !chunkText.isEmpty && chunkText != L10n.tr("Речь не распознана") && chunkText != "Речь не распознана" {
                             accumulatedText.append(chunkText)
                         }
                         if chunkResult.words.isEmpty {
@@ -965,7 +1011,9 @@ class AudioCapture: NSObject, ObservableObject, AVAudioRecorderDelegate {
                 let templateID = self.autoAIProcessTemplateID
                 if let template = PromptStore.shared.templates.first(where: { $0.id == templateID }) ?? PromptStore.shared.templates.first {
                     DispatchQueue.main.async {
-                        self.transcribedText = "ИИ: \(template.title)…"
+                        self.pipelinePhase = .aiTransforming
+                        let title = (!template.isCustom || AIPromptDefaults.builtinIDs.contains(template.id)) ? L10n.tr(template.title) : template.title
+                        self.transcribedText = L10n.format("ИИ: %@…", title)
                     }
                     let semaphore = DispatchSemaphore(value: 0)
                     let dynamicCandidates = TechTermStore.shared.findFuzzyCandidateTerms(for: termsCorrectedText, limit: 4)
@@ -990,18 +1038,20 @@ class AudioCapture: NSObject, ObservableObject, AVAudioRecorderDelegate {
             }
 
             let prettyFormattedText = TextFormatter.formatIntoParagraphs(processedText)
-            let processingTimeSecs = Date().timeIntervalSince(processStartTime)
-            let calculatedSpeedup = max(1.0, realAudioSecs / max(0.1, processingTimeSecs))
 
             DispatchQueue.main.async {
                 self.isProcessingFile = false
                 if prettyFormattedText.isEmpty {
-                    OverlayPanelManager.shared.showWarning(message: String(localized: "Речь не распознана"))
+                    self.pipelinePhase = .idle
+                    OverlayPanelManager.shared.showWarning(message: .key("Речь не распознана"))
                     completion?(false)
                 } else {
+                    self.pipelinePhase = .completed
                     self.replaceNoteText(id: id, text: prettyFormattedText, rawText: rawText, termsText: termsCorrectedText)
                     if !accumulatedWords.isEmpty {
                         self.saveTimingsForNote(id: id, words: accumulatedWords, duration: realAudioSecs)
+                    } else {
+                        self.deleteTimingsForNote(id: id)
                     }
                     SoundEffect.playSuccess()
                     OverlayPanelManager.shared.scheduleHide(after: 0.8)
@@ -1414,7 +1464,7 @@ class AudioCapture: NSObject, ObservableObject, AVAudioRecorderDelegate {
         var request = URLRequest(url: endpoint)
         request.httpMethod = "POST"
         request.timeoutInterval = 120
-        if let key = model.apiKey, !key.isEmpty {
+        if let key = KeyStore.get("asr.custom.\(model.id).apiKey") ?? model.apiKey, !key.isEmpty {
             request.setValue("Bearer \(key)", forHTTPHeaderField: "Authorization")
         }
 
@@ -1443,6 +1493,11 @@ class AudioCapture: NSObject, ObservableObject, AVAudioRecorderDelegate {
             defer { semaphore.signal() }
             if let error = error {
                 AppLogger.shared.error("Recognition", "Ошибка удаленного распознавания: \(error.localizedDescription)")
+                return
+            }
+            if let http = response as? HTTPURLResponse, !(200..<300).contains(http.statusCode) {
+                let detail = data.flatMap { AIService.extractError(from: $0) } ?? "HTTP \(http.statusCode)"
+                AppLogger.shared.error("Recognition", "Удаленный сервер распознавания вернул ошибку", details: detail)
                 return
             }
             guard let data = data,
@@ -1624,7 +1679,6 @@ class AudioCapture: NSObject, ObservableObject, AVAudioRecorderDelegate {
         guard autoPasteEnabled else { return }
         guard AXIsProcessTrusted() else {
             AppLogger.shared.warn("Paste", "Доступ AX недоступен — пропускаем вставку. Пользователь должен включить её в Настройках.")
-            Telemetry.shared.event("paste_skipped", ["paste_reason": "no_ax_access"])
             return
         }
         guard let target = pasteTarget else { return }
@@ -1633,11 +1687,9 @@ class AudioCapture: NSObject, ObservableObject, AVAudioRecorderDelegate {
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
             guard self.canAcceptPaste(pid: pid) else {
                 AppLogger.shared.info("Paste", "Вставка пропущена: под фокусом нет редактируемого поля", details: target.localizedName)
-                Telemetry.shared.event("paste_skipped", ["paste_reason": "no_focus"])
                 return
             }
             AppLogger.shared.info("Paste", "Cmd+V отправлен", details: target.localizedName)
-            Telemetry.shared.event("paste_success", ["paste_method": "cgkey"])
             let source = CGEventSource(stateID: .combinedSessionState)
             guard let keyDown = CGEvent(keyboardEventSource: source, virtualKey: 0x09, keyDown: true),
                   let keyUp = CGEvent(keyboardEventSource: source, virtualKey: 0x09, keyDown: false) else { return }
@@ -1662,14 +1714,6 @@ class AudioCapture: NSObject, ObservableObject, AVAudioRecorderDelegate {
         default:
             return false
         }
-    }
-    
-    private func sendTelemetry(eventType: String, audioDurationSec: Double, characterCount: Int, speedup: Double) {
-        Telemetry.shared.event(eventType, [
-            "audio_duration_sec": audioDurationSec,
-            "character_count": characterCount,
-            "speedup_factor": speedup
-        ])
     }
     
     // MARK: - Субтитры
@@ -1769,7 +1813,7 @@ class AudioCapture: NSObject, ObservableObject, AVAudioRecorderDelegate {
     // ЭКСПОРТ В ВАЛИДНЫЙ UTF-8 С BOM ДЛЯ MS EXCEL / NUMBERS
     func exportTranscription(_ item: TranscriptionItem, format: String) {
         let panel = NSSavePanel()
-        panel.title = "Сохранить транскрипцию"
+        panel.title = L10n.tr("Сохранить транскрипцию")
         panel.nameFieldStringValue = "Заметка_\(item.date.replacingOccurrences(of: ":", with: "-")).\(format)"
         if panel.runModal() == .OK, let saveURL = panel.url {
             var content = ""
@@ -1869,12 +1913,12 @@ func checkUpdates(force: Bool = false) {
     func cancelUpdateDownload() {
         downloadTask?.cancel()
         downloadTask = nil
-        DispatchQueue.main.async { self.isDownloadingUpdate = false; self.updateProgressText = "" }
+        DispatchQueue.main.async { self.isDownloadingUpdate = false; self.updateProgressStatus = .idle }
     }
     
     func downloadAndInstallUpdate() {
         guard let updateUrl = updateInfo?.url else { return }
-        DispatchQueue.main.async { self.isDownloadingUpdate = true; self.updateProgressText = "Подключение..." }
+        DispatchQueue.main.async { self.isDownloadingUpdate = true; self.updateProgressStatus = .connecting }
         let dest = FileManager.default.temporaryDirectory.appendingPathComponent("Golosok_Update.dmg")
         if FileManager.default.fileExists(atPath: dest.path) { try? FileManager.default.removeItem(at: dest) }
         let config = URLSessionConfiguration.default
@@ -1885,12 +1929,22 @@ func checkUpdates(force: Bool = false) {
     
     func deleteItem(at index: Int) {
         let item = history[index]
+        if playingItemId == item.id { stopSyncedPlayback() }
+        if preloadedPlayerId == item.id { audioPlayer = nil; preloadedPlayerId = nil }
         history.remove(at: index)
         deleteAudioFile(for: item.id)
     }
     func clearAllHistory() {
+        stopSyncedPlayback()
+        audioPlayer = nil
+        if FileManager.default.fileExists(atPath: tempAudioURL.path) {
+            try? FileManager.default.removeItem(at: tempAudioURL)
+        }
         history.forEach { deleteAudioFile(for: $0.id) }
         history.removeAll()
+        pipelinePhase = .idle
+        warningMessage = nil
+        NotificationCenter.default.post(name: .historyDidClear, object: nil)
     }
     private func historyStoreURL() -> URL? {
         guard let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first else { return nil }
@@ -1972,8 +2026,10 @@ extension AudioCapture: URLSessionDownloadDelegate {
         let mbWritten = Double(totalBytesWritten) / (1024.0 * 1024.0)
         let mbTotal = Double(totalBytesExpectedToWrite) / (1024.0 * 1024.0)
         let percent = Int(progress * 100.0)
-        let text = String(format: "%.0f / %.0f МБ (%d%%)", mbWritten, mbTotal, percent)
-        DispatchQueue.main.async { self.fileProcessingProgress = progress; self.updateProgressText = text }
+        DispatchQueue.main.async {
+            self.fileProcessingProgress = progress
+            self.updateProgressStatus = .progress(writtenMB: mbWritten, totalMB: mbTotal, percent: percent)
+        }
     }
     func urlSession(_ session: URLSession, downloadTask: URLSessionDownloadTask, didFinishDownloadingTo location: URL) {
         let dest = FileManager.default.temporaryDirectory.appendingPathComponent("Golosok_Update.dmg")
@@ -1982,9 +2038,9 @@ extension AudioCapture: URLSessionDownloadDelegate {
             try FileManager.default.moveItem(at: location, to: dest)
             DispatchQueue.main.async {
                 self.isDownloadingUpdate = false
-                self.updateProgressText = "Открытие..."
+                self.updateProgressStatus = .opening
                 NSWorkspace.shared.open(dest)
             }
-        } catch { DispatchQueue.main.async { self.isDownloadingUpdate = false; self.updateProgressText = "Ошибка" } }
+        } catch { DispatchQueue.main.async { self.isDownloadingUpdate = false; self.updateProgressStatus = .failed } }
     }
 }

@@ -115,7 +115,7 @@ class OverlayPanelManager {
         }
     }
     
-    func showWarning(message: String) {
+    func showWarning(message: LocalizedMessage) {
         DispatchQueue.main.async {
             self.pendingHideWorkItem?.cancel()
             AudioCapture.shared.warningMessage = message
@@ -129,6 +129,10 @@ class OverlayPanelManager {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 3.5, execute: workItem)
             }
         }
+    }
+
+    func showWarning(message: String) {
+        showWarning(message: .raw(message))
     }
     
     func scheduleHide(after delay: Double) {
@@ -231,6 +235,7 @@ struct SuccessCheckView: View {
 
 struct FloatingWidgetView: View {
     @ObservedObject var audioCapture = AudioCapture.shared
+    @ObservedObject var language = LanguageSettings.shared
     @Environment(\.colorScheme) private var colorScheme
     @State private var isAppeared = false
     @State private var isHoveringCancel = false
@@ -250,12 +255,12 @@ struct FloatingWidgetView: View {
                 .opacity(0.4)
             
             HStack(alignment: .center, spacing: 10) {
-                if let warningText = audioCapture.warningMessage {
+                if let warning = audioCapture.warningMessage {
                     HStack(spacing: 6) {
                         Image(systemName: "exclamationmark.triangle.fill")
                             .font(.system(size: 13, weight: .bold))
                             .foregroundColor(Color(hex: "#F59E0B"))
-                        Text(warningText)
+                        Text(warning.localized)
                             .font(UIStyleFont.body(size: 12, weight: .semibold))
                             .foregroundColor(.white)
                             .lineLimit(1)
@@ -279,8 +284,8 @@ struct FloatingWidgetView: View {
                             .lineLimit(1)
                     }
                     .contentShape(Rectangle())
-                    .help(String(localized: "Нажмите, чтобы отменить генерацию"))
-                } else if audioCapture.transcribedText == String(localized: "Расшифровка...") {
+                    .help(LocalizedStringKey("Нажмите, чтобы отменить генерацию"))
+                } else if audioCapture.pipelinePhase == .transcribing {
                     HStack(spacing: 2.0) {
                         TimelineView(.animation) { timeline in
                             let time = timeline.date.timeIntervalSince1970 * 4.5
@@ -328,7 +333,7 @@ struct FloatingWidgetView: View {
             .clipShape(Capsule())
             .overlay(
                 Group {
-                    if audioCapture.transcribedText == String(localized: "Расшифровка...") || audioCapture.isProcessingFile || audioCapture.aiStatusText != nil {
+                    if audioCapture.pipelinePhase == .transcribing || audioCapture.isProcessingFile || audioCapture.aiStatusText != nil {
                         RotatingGlowBorder()
                     } else if audioCapture.warningMessage != nil {
                         Capsule().stroke(Color(hex: "#F59E0B").opacity(0.6), lineWidth: 1.2)
@@ -353,6 +358,7 @@ struct FloatingWidgetView: View {
             isAppeared = false
         }
         .frame(width: 240, height: 60)
+        .environment(\.locale, language.locale)
     }
     
     private func getWidth() -> CGFloat {
@@ -369,7 +375,7 @@ struct FloatingWidgetView: View {
     private func getGlowColor() -> Color {
         if audioCapture.warningMessage != nil { return Color(hex: "#F59E0B") }
         if audioCapture.aiStatusText != nil { return Color(hex: "#C084FC") }
-        if audioCapture.isProcessingFile || audioCapture.transcribedText == String(localized: "Расшифровка...") { return Color(hex: "#6366F1") }
+        if audioCapture.isProcessingFile || audioCapture.pipelinePhase == .transcribing { return Color(hex: "#6366F1") }
         if audioCapture.isSuccessDone { return Color(hex: "#10B981") }
         return Color(hex: "#10B981")
     }

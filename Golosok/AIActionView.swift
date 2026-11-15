@@ -128,15 +128,16 @@ struct AIResultSheet: View {
     let request: AIActionRequest
     let onOpenNewNote: (UUID) -> Void
     @Environment(\.dismiss) private var dismiss
+    @ObservedObject private var language = LanguageSettings.shared
 
     @State private var phase: Phase = .loading
     @State private var resultText = ""
     @State private var reasoningText = ""
     @State private var isReasoningExpanded = false
-    @State private var errorText: String?
+    @State private var errorMessage: LocalizedMessage?
     @State private var copied = false
     @State private var fromCache = false
-    @State private var currentTask: URLSessionDataTask?
+    @State private var currentTask: AICancelableRequest?
 
     enum Phase { case loading, streaming, done, error }
 
@@ -224,7 +225,7 @@ struct AIResultSheet: View {
     private var streamingBar: some View {
         HStack(spacing: 10) {
             ProgressView().controlSize(.small)
-            Text(isReasoningActive ? String(localized: "Размышления модели…") : (resultText.isEmpty ? String(localized: "Генерация ответа…") : String(localized: "Печатает ответ…")))
+            Text(isReasoningActive ? LocalizedStringKey("Размышления модели…") : (resultText.isEmpty ? LocalizedStringKey("Генерация ответа…") : LocalizedStringKey("Печатает ответ…")))
                 .font(UIStyleFont.body(size: 12, weight: .medium))
                 .foregroundColor(.uiMidGray)
             Spacer()
@@ -284,7 +285,7 @@ struct AIResultSheet: View {
                 Image(systemName: "exclamationmark.triangle")
                     .font(.system(size: 24))
                     .foregroundColor(.uiEmber)
-                Text(errorText ?? String(localized: "Ошибка"))
+                Text(errorMessage?.localized ?? L10n.tr("Ошибка"))
                     .font(UIStyleFont.body(size: 13, weight: .medium))
                     .foregroundColor(.uiInk)
                     .multilineTextAlignment(.center)
@@ -580,7 +581,7 @@ struct AIResultSheet: View {
                     .overlay(Circle().stroke(Color.uiHairline, lineWidth: 1))
             }
             .buttonStyle(TactileButtonStyle())
-            .help(String(localized: "Перегенерировать"))
+            .help(LocalizedStringKey("Перегенерировать"))
 
             Button(action: copy) {
                 Image(systemName: copied ? "checkmark" : "doc.on.doc")
@@ -592,7 +593,7 @@ struct AIResultSheet: View {
                     .overlay(Circle().stroke(copied ? Color(hex: "#10B981").opacity(0.5) : Color.uiHairline, lineWidth: 1))
             }
             .buttonStyle(TactileButtonStyle())
-            .help(String(localized: copied ? "Готово!" : "Копировать"))
+            .help(copied ? LocalizedStringKey("Готово!") : LocalizedStringKey("Копировать"))
         }
     }
 
@@ -614,14 +615,14 @@ struct AIResultSheet: View {
     private func generate() {
         fromCache = false
         phase = .loading
-        errorText = nil
+        errorMessage = nil
         resultText = ""
         reasoningText = ""
         cancelGeneration()
 
         guard AIProviderStore.shared.isConfigured else {
             phase = .error
-            errorText = String(localized: "ИИ-провайдер не настроен. Добавьте ключ в Настройках → ИИ-провайдер.")
+            errorMessage = .key("ИИ-провайдер не настроен. Добавьте ключ в Настройках → ИИ-провайдер.")
             return
         }
 
@@ -658,7 +659,7 @@ struct AIResultSheet: View {
                             resultText = resultText.trimmingCharacters(in: .whitespacesAndNewlines)
                             phase = .done
                         } else {
-                            errorText = error.localizedDescription
+                            errorMessage = .raw(error.localizedDescription)
                             phase = .error
                         }
                     }
