@@ -2,20 +2,24 @@ import SwiftUI
 import AppKit
 
 class AppDelegate: NSObject, NSApplicationDelegate {
-    /// macOS 14+ игнорирует `activate(ignoringOtherApps:)` для фонового приложения,
-    /// поэтому окно нужно поднимать в таком порядке: политика → окно → активация.
-    func revealMainWindow() {
+    /// Поднимает уже существующее окно. macOS 14+ игнорирует
+    /// `activate(ignoringOtherApps:)` для фонового приложения, поэтому порядок
+    /// важен: политика → окно → активация.
+    func activateMainWindow() {
         NSApp.setActivationPolicy(.regular)
-        if let window = NSApp.windows.first(where: { $0.canBecomeMain && !($0 is NSPanel) }) {
-            window.deminiaturize(nil)
-            window.makeKeyAndOrderFront(nil)
-        }
+        guard let window = NSApp.windows.first(where: { $0.canBecomeMain && !($0 is NSPanel) }) else { return }
+        window.deminiaturize(nil)
+        window.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
         NSRunningApplication.current.activate(options: [.activateAllWindows])
     }
 
+    /// Клик по иконке в Dock, повторный `open` и reopen-событие.
+    /// Окно после закрытия крестиком создаёт SwiftUI по этому событию, поэтому
+    /// здесь достаточно активировать приложение.
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
-        revealMainWindow()
+        NSApp.setActivationPolicy(.regular)
+        NSApp.activate(ignoringOtherApps: true)
         return true
     }
 
@@ -71,10 +75,15 @@ struct GolosYakaApp: App {
     }
     
     var body: some Scene {
-        WindowGroup {
+        // Явный id нужен, чтобы «Развернуть ГолосЯку» мог создать окно заново,
+        // если пользователь закрыл его крестиком и остался только пункт в статус-баре.
+        WindowGroup(id: "main") {
             ContentView()
                 .withAppLocale()
                 .frame(minWidth: 990, minHeight: 710)
+                .onAppear {
+                    (NSApp.delegate as? AppDelegate)?.activateMainWindow()
+                }
         }
         
         .commands {
@@ -114,27 +123,43 @@ struct GolosYakaApp: App {
         .defaultSize(width: 990, height: 710)
         
         MenuBarExtra(L10n.tr("ГолосЯка"), systemImage: "waveform") {
-            Button(L10n.tr("Скопировать последнюю запись")) {
-                if let last = audioCapture.history.first?.text {
-                    NSPasteboard.general.clearContents()
-                    NSPasteboard.general.setString(last, forType: .string)
-                }
-            }
-            .disabled(audioCapture.history.isEmpty)
-            
-            Divider()
-            
-            Button(L10n.tr("Транскрибировать аудиофайл...")) {
-                AudioCapture.shared.importAndTranscribeFile()
-            }
-            
-            Button(L10n.tr("Развернуть ГолосЯку")) {
-                appDelegate.revealMainWindow()
-            }
-            
-            Divider()
-            
-            Button(L10n.tr("Завершить")) { NSApplication.shared.terminate(nil) }
+            MenuBarMenu()
         }
+    }
+}
+
+/// Содержимое меню в статус-баре. Вынесено отдельной вьюхой, потому что здесь
+/// нужен `openWindow`: он создаёт окно главной сцены, когда оно закрыто.
+private struct MenuBarMenu: View {
+    @Environment(\.openWindow) private var openWindow
+    @ObservedObject private var audioCapture = AudioCapture.shared
+
+    var body: some View {
+        Button(L10n.tr("Скопировать последнюю запись")) {
+            if let last = audioCapture.history.first?.text {
+                NSPasteboard.general.clearContents()
+                NSPasteboard.general.setString(last, forType: .string)
+            }
+        }
+        .disabled(audioCapture.history.isEmpty)
+
+        Divider()
+
+        Button(L10n.tr("Транскрибировать аудиофайл...")) {
+            AudioCapture.shared.importAndTranscribeFile()
+        }
+
+        Button(L10n.tr("Развернуть ГолосЯку")) {
+            openWindow(id: "main")
+            // Окно создаётся асинхронно: активируем и сразу, и когда оно появится
+            // (см. onAppear у WindowGroup).
+            DispatchQueue.main.async {
+                (NSApp.delegate as? AppDelegate)?.activateMainWindow()
+            }
+        }
+
+        Divider()
+
+        Button(L10n.tr("Завершить")) { NSApplication.shared.terminate(nil) }
     }
 }
