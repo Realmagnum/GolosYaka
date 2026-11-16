@@ -92,6 +92,42 @@ mkdir -p "$STAGE_DIR"
 cp -R "$APP_PATH" "$STAGE_DIR/Golosok.app"
 ln -s /Applications "$STAGE_DIR/Applications"
 
+# Без нотаризации пользователь обязан снять карантин руками — инструкция едет в самом DMG.
+cat > "$STAGE_DIR/INSTALL.txt" <<'README_FIRST'
+Golosok — первое открытие / First launch
+========================================
+
+1. Перетащите Golosok.app в папку Applications.
+   Drag Golosok.app into the Applications folder.
+
+2. Сборка подписана ad-hoc: у проекта нет платного сертификата Apple Developer,
+   поэтому Gatekeeper предупредит при первом запуске.
+   This build is ad-hoc signed: the project has no paid Apple Developer ID, so
+   Gatekeeper will warn on the first launch.
+
+   Терминал (надёжнее всего) / Terminal:
+     xattr -cr /Applications/Golosok.app
+     open /Applications/Golosok.app
+
+   Или через Finder: правый клик по Golosok.app → «Открыть» → «Открыть».
+   Or in Finder: right-click Golosok.app -> Open -> Open.
+
+   Или: Системные настройки → Конфиденциальность и безопасность →
+   «Всё равно открыть».
+   Or: System Settings -> Privacy & Security -> "Open Anyway".
+
+3. Разрешите микрофон и Универсальный доступ (Accessibility).
+   Allow Microphone and Accessibility.
+
+4. После обновления на новую версию macOS может снова спросить
+   Универсальный доступ: удалите Голосок из списка кнопкой «−» и добавьте заново.
+   После каждого обновления ad-hoc подпись меняется, поэтому разрешение может слетать.
+   After an update the ad-hoc signature changes, so macOS may ask for
+   Accessibility again: remove Golosok with "-" and add it back.
+
+Подробности / Details: https://github.com/Realmagnum/Golosok
+README_FIRST
+
 echo "==> Создание DMG: $DMG_PATH"
 rm -f "$DMG_PATH"
 if ! hdiutil create -volname "Golosok $VERSION" -srcfolder "$STAGE_DIR" -ov -format UDZO -quiet "$DMG_PATH"; then
@@ -125,8 +161,9 @@ enforce_no_symlinks "$APP_PATH"
 shasum -a 256 "$DMG_PATH" | tee "$DMG_PATH.sha256"
 
 if [[ "$IDENTITY" == "-" ]]; then
-    echo "⚠️  Бандл подписан ad-hoc: Gatekeeper заблокирует его у пользователей."
-    echo "    Инструкция для пользователей: xattr -cr /Applications/Golosok.app"
+    echo "⚠️  Бандл подписан ad-hoc: нотаризация недоступна, Gatekeeper заблокирует первый запуск."
+    echo "    В DMG положен INSTALL.txt с инструкцией. Пользователю нужно выполнить:"
+    echo "      xattr -cr /Applications/Golosok.app"
 else
     echo "==> Оценка Gatekeeper..."
     spctl --assess --type execute --verbose=4 "$APP_PATH" || true

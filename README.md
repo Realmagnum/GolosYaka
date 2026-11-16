@@ -65,7 +65,12 @@ This project is distributed as open-source software without an annual paid Apple
 xattr -cr /Applications/Golosok.app
 ```
 
-*(GUI alternative: Control + right-click the app icon → Open → Confirm).*
+*(GUI alternative: Control + right-click the app icon → Open → Confirm; or System Settings → Privacy & Security → Open Anyway. The same instructions ship inside the DMG as `INSTALL.txt`.)*
+
+The build is **ad-hoc signed**: Gatekeeper warnings are expected, notarization is impossible
+without a Developer ID, and the code signature changes on every release. Because macOS ties
+the Accessibility permission to that signature, macOS may ask you to re-add Golosok in
+System Settings → Privacy & Security → Accessibility after an update.
 
 ## System Permissions
 
