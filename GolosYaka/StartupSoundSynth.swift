@@ -114,7 +114,8 @@ class StartupSoundSynth {
         
         do {
             audioPlayer = try AVAudioPlayer(data: wavData)
-            audioPlayer?.volume = 1.0
+            // Стартовый аккорд был заметно громче системных звуков — приглушаем.
+            audioPlayer?.volume = 0.4
             audioPlayer?.prepareToPlay()
             audioPlayer?.play()
         } catch {

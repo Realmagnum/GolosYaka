@@ -2,6 +2,23 @@ import SwiftUI
 import AppKit
 
 class AppDelegate: NSObject, NSApplicationDelegate {
+    /// macOS 14+ игнорирует `activate(ignoringOtherApps:)` для фонового приложения,
+    /// поэтому окно нужно поднимать в таком порядке: политика → окно → активация.
+    func revealMainWindow() {
+        NSApp.setActivationPolicy(.regular)
+        if let window = NSApp.windows.first(where: { $0.canBecomeMain && !($0 is NSPanel) }) {
+            window.deminiaturize(nil)
+            window.makeKeyAndOrderFront(nil)
+        }
+        NSApp.activate(ignoringOtherApps: true)
+        NSRunningApplication.current.activate(options: [.activateAllWindows])
+    }
+
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        revealMainWindow()
+        return true
+    }
+
     func applicationDidFinishLaunching(_ notification: Notification) {
         KeyStore.migrateAllIfNeeded()
         let mic = PermissionManager.shared.isMicGranted
@@ -112,10 +129,7 @@ struct GolosYakaApp: App {
             }
             
             Button(L10n.tr("Развернуть ГолосЯку")) {
-                NSApp.activate(ignoringOtherApps: true)
-                if let window = NSApplication.shared.windows.first {
-                    window.makeKeyAndOrderFront(nil)
-                }
+                appDelegate.revealMainWindow()
             }
             
             Divider()

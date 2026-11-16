@@ -127,9 +127,9 @@ struct SplashView: View {
                 .frame(height: 120)
                 
                 VStack(spacing: 14) {
-                    Text("Г О Л О С О К")
-                        .font(Font.custom("HelveticaNeue-UltraLight", size: 42))
-                        .tracking(14.0)
+                    Text("Г О Л О С Я К А")
+                        .font(Font.custom("HelveticaNeue-UltraLight", size: 38))
+                        .tracking(11.0)
                         .foregroundColor(.uiInk)
                         .opacity(logoOpacity)
                         .rotation3DEffect(.degrees(perspective3D), axis: (x: 1, y: 0, z: 0))

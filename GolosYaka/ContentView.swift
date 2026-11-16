@@ -877,25 +877,39 @@ struct ContentView: View {
         let fileType = UTType.fileURL.identifier
         let loaders = providers.filter { $0.hasItemConformingToTypeIdentifier(fileType) }
         guard !loaders.isEmpty else { return false }
-        var urls: [URL] = []
-        let group = DispatchGroup()
-        for provider in loaders {
-            group.enter()
-            provider.loadItem(forTypeIdentifier: fileType, options: nil) { item, _ in
-                defer { group.leave() }
-                if let url = item as? URL {
-                    urls.append(url)
-                } else if let data = item as? Data, let url = URL(dataRepresentation: data, relativeTo: nil) {
-                    urls.append(url)
-                } else if let str = item as? String, let url = URL(string: str) {
-                    urls.append(url)
-                }
-            }
-        }
-        group.notify(queue: .main) {
+
+        Task {
+            let urls = await Self.loadDroppedURLs(from: loaders, fileType: fileType)
             if !urls.isEmpty { audioCapture.importFiles(urls) }
         }
         return true
+    }
+
+    /// Порядок файлов — порядок, в котором их бросили: результаты TaskGroup
+    /// приходят по готовности, поэтому раскладываем их по индексу провайдера.
+    /// Общий мутабельный массив между потоками больше не нужен.
+    private static func loadDroppedURLs(from providers: [NSItemProvider], fileType: String) async -> [URL] {
+        await withTaskGroup(of: (Int, URL?).self) { group in
+            for (index, provider) in providers.enumerated() {
+                group.addTask {
+                    let url = await withCheckedContinuation { (continuation: CheckedContinuation<URL?, Never>) in
+                        provider.loadItem(forTypeIdentifier: fileType, options: nil) { item, _ in
+                            let resolved = (item as? URL)
+                                ?? ((item as? Data).flatMap { URL(dataRepresentation: $0, relativeTo: nil) })
+                                ?? ((item as? String).flatMap { URL(string: $0) })
+                            continuation.resume(returning: resolved)
+                        }
+                    }
+                    return (index, url)
+                }
+            }
+
+            var byIndex: [Int: URL] = [:]
+            for await (index, url) in group {
+                if let url { byIndex[index] = url }
+            }
+            return providers.indices.compactMap { byIndex[$0] }
+        }
     }
 
     private func scheduleSearch(_ query: String) {

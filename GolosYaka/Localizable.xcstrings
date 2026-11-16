@@ -1646,18 +1646,18 @@
         }
       }
     },
-    "Г О Л О С О К": {
+    "Г О Л О С Я К А": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "G O L O S O K"
+            "value": "G O L O S Y A K A"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Г О Л О С О К"
+            "value": "Г О Л О С Я К А"
           }
         }
       }
@@ -2348,6 +2348,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "ИИ-обработка выделения"
+          }
+        }
+      }
+    },
+    "ИИ-распознавание": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "AI recognition"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ИИ-распознавание"
           }
         }
       }
