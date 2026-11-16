@@ -29,6 +29,18 @@ struct PulsingHaloRing: View {
     }
 }
 
+/// Сплэш и стартовый аккорд — один раз на запущенный процесс.
+///
+/// Окно можно закрыть крестиком и открыть заново из статус-бара: это тот же
+/// процесс, поэтому анимация и звук второй раз не проигрываются.
+enum LaunchExperience {
+    private(set) static var hasFinishedSplash = false
+
+    static func markSplashFinished() {
+        hasFinishedSplash = true
+    }
+}
+
 struct SplashView: View {
     @Binding var isFinished: Bool
     
@@ -228,6 +240,7 @@ struct SplashView: View {
         
         // 3.6s — Переход в приложение
         DispatchQueue.main.asyncAfter(deadline: .now() + 3.6) {
+            LaunchExperience.markSplashFinished()
             withAnimation(.easeInOut(duration: 0.3)) { isFinished = true }
         }
     }

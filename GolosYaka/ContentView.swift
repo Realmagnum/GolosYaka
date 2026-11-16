@@ -788,7 +788,7 @@ struct ContentView: View {
     
     var body: some View {
         ZStack {
-            if !isSplashFinished {
+            if !isSplashFinished && !LaunchExperience.hasFinishedSplash {
                 SplashView(isFinished: $isSplashFinished).transition(.opacity).zIndex(2)
             } else {
                 Group {
