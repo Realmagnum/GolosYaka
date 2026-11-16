@@ -36,6 +36,8 @@ struct TechTermManagerView: View {
     @State private var showingCandidatesSheet = false
     @State private var importResultMessage: String?
     @State private var showingImportAlert = false
+    @State private var ruleToDelete: TechTermRule?
+    @State private var showingDeleteDisabledAlert = false
 
     private var allEnabled: Bool {
         !store.rules.isEmpty && store.rules.allSatisfy { $0.isEnabled }
@@ -43,6 +45,11 @@ struct TechTermManagerView: View {
 
     private var noneEnabled: Bool {
         store.rules.allSatisfy { !$0.isEnabled }
+    }
+
+    /// Сколько правил удалит кнопка «Удалить невыбранное».
+    private var disabledCount: Int {
+        store.rules.filter { !$0.isEnabled }.count
     }
 
     /// Отфильтрованный и отсортированный список правил
@@ -109,6 +116,30 @@ struct TechTermManagerView: View {
             Button("OK", role: .cancel) { }
         } message: {
             Text(importResultMessage ?? "")
+        }
+        .alert(
+            "Удалить термин?",
+            isPresented: Binding(
+                get: { ruleToDelete != nil },
+                set: { if !$0 { ruleToDelete = nil } }
+            ),
+            presenting: ruleToDelete
+        ) { rule in
+            Button("Отмена", role: .cancel) { ruleToDelete = nil }
+            Button("Удалить", role: .destructive) {
+                store.delete(id: rule.id)
+                ruleToDelete = nil
+            }
+        } message: { rule in
+            Text(L10n.format("Термин «%@» будет удалён без возможности восстановления.", rule.canonical))
+        }
+        .alert("Удалить невыбранные термины?", isPresented: $showingDeleteDisabledAlert) {
+            Button("Отмена", role: .cancel) { }
+            Button("Удалить", role: .destructive) {
+                store.deleteDisabled()
+            }
+        } message: {
+            Text(L10n.format("Будет удалено терминов: %lld. Действие необратимо.", Int64(disabledCount)))
         }
     }
 
@@ -229,13 +260,32 @@ struct TechTermManagerView: View {
                 }
             }
 
-            // Нижняя строка: счетчик и кнопки импорта/экспорта
+            // Нижняя строка: счетчик и кнопки массового удаления / импорта / экспорта
             HStack(spacing: 8) {
                 Text(L10n.format("Показано: %lld из %lld", Int64(displayedRules.count), Int64(store.rules.count)))
                     .font(UIStyleFont.mono(size: 11))
                     .foregroundColor(.uiMidGray)
 
                 Spacer()
+
+                // Кнопка удаления всех терминов со снятым переключателем применения
+                Button(action: { showingDeleteDisabledAlert = true }) {
+                    HStack(spacing: 4) {
+                        Image(systemName: "trash.slash")
+                            .font(.system(size: 11, weight: .medium))
+                        Text("Удалить невыбранное")
+                            .font(UIStyleFont.body(size: 12, weight: .medium))
+                    }
+                    .foregroundColor(disabledCount > 0 ? .uiInk : .uiMidGray.opacity(0.45))
+                    .padding(.vertical, 4)
+                    .padding(.horizontal, 10)
+                    .background(Color.uiSidebar)
+                    .cornerRadius(8)
+                    .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.uiHairline, lineWidth: 1))
+                }
+                .buttonStyle(PlainButtonStyle())
+                .disabled(disabledCount == 0)
+                .help("Удаляет все термины, у которых снят переключатель применения")
 
                 // Кнопка Импорт
                 Button(action: importDictionary) {
@@ -326,7 +376,7 @@ struct TechTermManagerView: View {
                                 Label("Редактировать", systemImage: "pencil")
                             }
                             Button(role: .destructive) {
-                                store.delete(id: rule.id)
+                                ruleToDelete = rule
                             } label: {
                                 Label("Удалить", systemImage: "trash")
                             }
@@ -362,11 +412,21 @@ struct TechTermManagerView: View {
 
             Button(action: { editingRule = rule }) {
                 Image(systemName: "pencil")
-                    .font(.system(size: 12))
+                    .font(.system(size: 15, weight: .medium))
                     .foregroundColor(.uiMidGray)
-                    .frame(width: 24, height: 24)
+                    .frame(width: 28, height: 28)
             }
             .buttonStyle(PlainButtonStyle())
+            .help("Редактировать термин")
+
+            Button(action: { ruleToDelete = rule }) {
+                Image(systemName: "trash")
+                    .font(.system(size: 14))
+                    .foregroundColor(.uiMidGray)
+                    .frame(width: 28, height: 28)
+            }
+            .buttonStyle(PlainButtonStyle())
+            .help("Удалить термин")
         }
         .padding(.vertical, 4)
     }
@@ -421,7 +481,7 @@ struct TechTermManagerView: View {
     private func exportDictionary() {
         let panel = NSSavePanel()
         panel.title = L10n.tr("Экспорт словаря терминов")
-        panel.nameFieldStringValue = "golosok_terms_dictionary.json"
+        panel.nameFieldStringValue = "golosyaka_terms_dictionary.json"
         if let jsonType = UTType(filenameExtension: "json") {
             panel.allowedContentTypes = [jsonType]
         }

@@ -12,7 +12,7 @@ final class NeuralDeepOAuthService: ObservableObject {
 
     private var currentSocket: Int32 = -1
     private var isCancelled = false
-    private let queue = DispatchQueue(label: "Golosok.NeuralDeepOAuth", qos: .userInitiated)
+    private let queue = DispatchQueue(label: "GolosYaka.NeuralDeepOAuth", qos: .userInitiated)
 
     private static let hubURL = "https://hub.neuraldeep.ru"
     private static let clientID = "golosok"
@@ -165,7 +165,7 @@ final class NeuralDeepOAuthService: ObservableObject {
             return
         }
 
-        sendResponse(to: clientSock, success: true, message: "Голосок успешно подключён к Neuraldeep!<br><small style='color:#a1a1aa'>Можно закрыть эту вкладку и вернуться в приложение.</small>")
+        sendResponse(to: clientSock, success: true, message: "ГолосЯка успешно подключена к Neuraldeep!<br><small style='color:#a1a1aa'>Можно закрыть эту вкладку и вернуться в приложение.</small>")
         Darwin.close(clientSock)
 
         DispatchQueue.main.async { [weak self] in

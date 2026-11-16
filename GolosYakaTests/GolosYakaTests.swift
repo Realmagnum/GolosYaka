@@ -1,15 +1,15 @@
 //
-//  GolosokTests.swift
-//  GolosokTests
+//  GolosYakaTests.swift
+//  GolosYakaTests
 //
 //  Created by kozak_dev on 26.07.2026.
 //
 
 import Testing
 import Foundation
-@testable import Golosok
+@testable import GolosYaka
 
-struct GolosokTests {
+struct GolosYakaTests {
 
     // MARK: - TextFormatter
 

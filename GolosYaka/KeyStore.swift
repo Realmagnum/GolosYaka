@@ -6,9 +6,9 @@ import Security
 /// кэшируются в оперативной памяти и переиспользуются во всех экранах (провайдеры, настройки, транскрибация)
 /// без повторных системных диалогов авторизации.
 enum KeyStore {
-    private static let serviceName = Bundle.main.bundleIdentifier ?? "kozak-developer.Golosok"
+    private static let serviceName = Bundle.main.bundleIdentifier ?? "com.realmagnum.GolosYaka"
     private static let packAccount = "credentials_pack"
-    private static let packLabel = "Golosok Credentials"
+    private static let packLabel = "GolosYaka Credentials"
     private static let legacyPrefix = "keystore."
 
     private static var memoryCache: [String: String] = [:]
@@ -237,6 +237,43 @@ enum KeyStore {
             UserDefaults.standard.removeObject(forKey: k)
         }
         return changed
+    }
+
+    /// Переносит единый пакет секретов из сервиса предыдущей версии приложения.
+    ///
+    /// Вызывается один раз при старте после смены bundle id. Если новый пакет уже есть
+    /// или Keychain недоступен, миграция молча пропускается — ключи можно ввести заново.
+    static func adoptLegacyPack(from legacyService: String) {
+        lock.lock()
+        defer { lock.unlock() }
+
+        preloadAllIfNeededLocked()
+        guard memoryCache.isEmpty, !packLoadFailed else { return }
+
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: legacyService,
+            kSecAttrAccount as String: packAccount,
+            kSecReturnData as String: true,
+            kSecMatchLimit as String: kSecMatchLimitOne
+        ]
+
+        var result: CFTypeRef?
+        let status = SecItemCopyMatching(query as CFDictionary, &result)
+        guard status == errSecSuccess,
+              let data = result as? Data,
+              let legacyPack = try? JSONDecoder().decode([String: String].self, from: data),
+              !legacyPack.isEmpty else {
+            if status != errSecItemNotFound && status != errSecSuccess {
+                AppLogger.shared.warn("KeyStore", "Пакет секретов предыдущей версии недоступен (OSStatus \(status))")
+            }
+            return
+        }
+
+        memoryCache = legacyPack
+        packLoadFailed = false
+        savePackToKeychainLocked()
+        AppLogger.shared.info("KeyStore", "Секреты перенесены из предыдущей версии приложения")
     }
 
     /// Для обратной совместимости вызовов.

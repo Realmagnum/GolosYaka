@@ -19,7 +19,7 @@ struct AIProviderSection: View {
                     .tracking(1.0)
                     .foregroundColor(.uiMidGray)
 
-                Text(LocalizedStringKey("BYO-ключ. Транскрипция уходит напрямую в ваш OpenAI-совместимый сервис — Голосок не выступает оператором данных."))
+                Text(LocalizedStringKey("BYO-ключ. Транскрипция уходит напрямую в ваш OpenAI-совместимый сервис — ГолосЯка не выступает оператором данных."))
                     .font(UIStyleFont.body(size: 11, weight: .regular))
                     .foregroundColor(.uiMidGray)
                     .lineSpacing(2)

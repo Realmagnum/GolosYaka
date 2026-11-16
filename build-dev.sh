@@ -1,12 +1,12 @@
 #!/bin/bash
-# Dev-сборка Golosok: валидный бандл с реальными ресурсами, ad-hoc подпись.
+# Dev-сборка GolosYaka: валидный бандл с реальными ресурсами, ad-hoc подпись.
 #
 # Использование:
 #   ./build-dev.sh                     # universal (arm64 + x86_64)
 #   ./build-dev.sh --arch arm64        # только arm64 (быстрее)
-#   GOLOSOK_BUILD_ROOT=/tmp/build ./build-dev.sh
+#   GOLOSYAKA_BUILD_ROOT=/tmp/build ./build-dev.sh
 #
-# Каталог сборки по умолчанию — ../Golosok-Build рядом с репозиторием, без привязки к /Users/...
+# Каталог сборки по умолчанию — ../GolosYaka-Build рядом с репозиторием, без привязки к /Users/...
 
 set -euo pipefail
 
@@ -34,8 +34,8 @@ done
 
 VERSION="$(read_version)"
 BUILD_NUMBER="$(read_build_number)"
-BUILD_ROOT="${GOLOSOK_BUILD_ROOT:-$(dirname "$ROOT")/Golosok-Build}"
-APP_TARGET="$BUILD_ROOT/Golosok-Dev.app"
+BUILD_ROOT="${GOLOSYAKA_BUILD_ROOT:-$(dirname "$ROOT")/GolosYaka-Build}"
+APP_TARGET="$BUILD_ROOT/GolosYaka-Dev.app"
 
 print_banner "dev v${VERSION}-dev ($ARCHS)"
 
@@ -43,9 +43,9 @@ verify_invariants
 
 WORK_DIR="$(mktemp -d)"
 trap 'rm -rf "$WORK_DIR"' EXIT
-compile_binary "$ARCHS" "$WORK_DIR/Golosok"
+compile_binary "$ARCHS" "$WORK_DIR/GolosYaka"
 
-stage_bundle "$APP_TARGET" "$WORK_DIR/Golosok" "${VERSION}-dev" "$BUILD_NUMBER"
+stage_bundle "$APP_TARGET" "$WORK_DIR/GolosYaka" "${VERSION}-dev" "$BUILD_NUMBER"
 sign_bundle "$APP_TARGET" "-"
 
 echo "==> Готово: $APP_TARGET (v${VERSION}-dev, build ${BUILD_NUMBER}, ${ARCHS})"

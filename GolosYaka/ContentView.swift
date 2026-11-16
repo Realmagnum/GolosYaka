@@ -321,7 +321,7 @@ struct SyncedTextView: NSViewRepresentable {
                 .foregroundColor: NSColor(Color.uiInk)
             ])
             for (i, range) in coordinator.cachedRanges.enumerated() where i < words.count && range.location != NSNotFound {
-                let url = URL(string: "golosok://seek/\(words[i].start)")
+                let url = URL(string: "golosyaka://seek/\(words[i].start)")
                 attributed.addAttribute(.link, value: url as Any, range: range)
                 attributed.addAttribute(.underlineStyle, value: 0, range: range)
             }
@@ -408,7 +408,7 @@ struct SyncedTextView: NSViewRepresentable {
         }
 
         func textView(_ textView: NSTextView, clickedOnLink link: Any, at charIndex: Int) -> Bool {
-            guard let url = link as? URL, url.scheme == "golosok",
+            guard let url = link as? URL, url.scheme == "golosyaka",
                   let time = Double(url.lastPathComponent) else { return false }
             onSeek(time)
             return true
@@ -977,7 +977,7 @@ struct ContentView: View {
             HStack(spacing: 8) {
                 Image("AppLogo").resizable().aspectRatio(contentMode: .fit).frame(width: 22, height: 22).cornerRadius(4)
                 VStack(alignment: .leading, spacing: -2) {
-                    Text("Голосок").font(UIStyleFont.display(size: 16, weight: .bold)).foregroundColor(.uiInk)
+                    Text("ГолосЯка").font(UIStyleFont.display(size: 16, weight: .bold)).foregroundColor(.uiInk)
                     HStack(spacing: 4) {
                         let versionStr = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? ""
                         Text(versionStr).font(UIStyleFont.body(size: 10, weight: .medium)).foregroundColor(.uiMidGray)
@@ -1270,7 +1270,7 @@ struct ContentView: View {
                                         .resizable()
                                         .frame(width: 26, height: 26)
                                         .cornerRadius(6)
-                                    Text("Голосок")
+                                    Text("ГолосЯка")
                                         .font(UIStyleFont.display(size: 20, weight: .bold))
                                         .foregroundColor(.uiInk)
                                 }

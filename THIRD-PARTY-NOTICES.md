@@ -1,9 +1,9 @@
-# Third-Party Notices — Golosok
+# Third-Party Notices — GolosYaka
 
-Golosok ships third-party executables and model weights inside `Golosok.app/Contents/Resources`.
+GolosYaka ships third-party executables and model weights inside `GolosYaka.app/Contents/Resources`.
 This file lists them, their licenses, and where the exact source can be obtained.
 
-Golosok itself is distributed under the MIT License (see `LICENSE`). It is a fork of
+GolosYaka itself is distributed under the MIT License (see `LICENSE`). It is a fork of
 [Berliner187/Golosok](https://github.com/Berliner187/Golosok), also MIT.
 
 | Component | File in bundle | Version | License | Upstream |

@@ -18,7 +18,7 @@ import sys
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-SWIFT_DIR = REPO_ROOT / "Golosok"
+SWIFT_DIR = REPO_ROOT / "GolosYaka"
 XCSTRINGS_PATH = SWIFT_DIR / "Localizable.xcstrings"
 
 # Ключи, которые формируются в рантайме (L10n.tr(variable)) или приходят из enum/моделей.

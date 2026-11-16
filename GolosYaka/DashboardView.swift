@@ -351,7 +351,7 @@ final class DashboardStatsStore: ObservableObject {
     static let shared = DashboardStatsStore()
     @Published private(set) var byRange: [StatsRange: DashboardCalculator] = [:]
     private var computedSignature = 0
-    private let queue = DispatchQueue(label: "golosok.dashboard.calc", qos: .utility)
+    private let queue = DispatchQueue(label: "golosyaka.dashboard.calc", qos: .utility)
 
     func value(for history: [TranscriptionItem], range: StatsRange) -> DashboardCalculator {
         if let s = byRange[range] { return s }

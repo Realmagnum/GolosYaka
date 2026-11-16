@@ -225,18 +225,18 @@
         }
       }
     },
-    "BYO-ключ. Транскрипция уходит напрямую в ваш OpenAI-совместимый сервис — Голосок не выступает оператором данных.": {
+    "BYO-ключ. Транскрипция уходит напрямую в ваш OpenAI-совместимый сервис — ГолосЯка не выступает оператором данных.": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Bring your own key. Transcription goes straight to your OpenAI-compatible service — Golosok never acts as a data operator."
+            "value": "Bring your own key. Transcription goes straight to your OpenAI-compatible service — GolosYaka never acts as a data operator."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "BYO-ключ. Транскрипция уходит напрямую в ваш OpenAI-совместимый сервис — Голосок не выступает оператором данных."
+            "value": "BYO-ключ. Транскрипция уходит напрямую в ваш OpenAI-совместимый сервис — ГолосЯка не выступает оператором данных."
           }
         }
       }
@@ -1710,18 +1710,18 @@
         }
       }
     },
-    "Голосок": {
+    "ГолосЯка": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Golosok"
+            "value": "GolosYaka"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Голосок"
+            "value": "ГолосЯка"
           }
         }
       }
@@ -3203,18 +3203,18 @@
         }
       }
     },
-    "Настройте ИИ-провайдер в Голоске": {
+    "Настройте ИИ-провайдер в ГолосЯке": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Configure an AI provider in Golosok"
+            "value": "Configure an AI provider in GolosYaka"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Настройте ИИ-провайдер в Голоске"
+            "value": "Настройте ИИ-провайдер в ГолосЯке"
           }
         }
       }
@@ -5004,18 +5004,18 @@
         }
       }
     },
-    "Развернуть Голосок": {
+    "Развернуть ГолосЯку": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Open Golosok"
+            "value": "Open GolosYaka"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Развернуть Голосок"
+            "value": "Развернуть ГолосЯку"
           }
         }
       }
@@ -5208,6 +5208,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "Редактировать кандидата"
+          }
+        }
+      }
+    },
+    "Редактировать термин": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Edit term"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Редактировать термин"
           }
         }
       }
@@ -6213,6 +6229,118 @@
         }
       }
     },
+    "Удалить невыбранное": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Delete unselected"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Удалить невыбранное"
+          }
+        }
+      }
+    },
+    "Удалить невыбранные термины?": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Delete unselected terms?"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Удалить невыбранные термины?"
+          }
+        }
+      }
+    },
+    "Удалить термин": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Delete term"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Удалить термин"
+          }
+        }
+      }
+    },
+    "Удалить термин?": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Delete term?"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Удалить термин?"
+          }
+        }
+      }
+    },
+    "Термин «%@» будет удалён без возможности восстановления.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The term “%@” will be deleted permanently."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Термин «%@» будет удалён без возможности восстановления."
+          }
+        }
+      }
+    },
+    "Будет удалено терминов: %lld. Действие необратимо.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Terms to delete: %lld. This cannot be undone."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Будет удалено терминов: %lld. Действие необратимо."
+          }
+        }
+      }
+    },
+    "Удаляет все термины, у которых снят переключатель применения": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Deletes every term whose apply switch is off"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Удаляет все термины, у которых снят переключатель применения"
+          }
+        }
+      }
+    },
     "Укажите модель": {
       "localizations": {
         "en": {
@@ -6791,18 +6919,18 @@
         }
       }
     },
-    "macOS привязала доступ к старой подписи. Удалите Голосок кнопкой «–» в Настройках и добавьте снова.": {
+    "macOS привязала доступ к старой подписи. Удалите ГолосЯку кнопкой «–» в Настройках и добавьте снова.": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "macOS bound permission to an older signature. Remove Golosok using the \"-\" button in Settings and add it again."
+            "value": "macOS bound permission to an older signature. Remove GolosYaka using the \"-\" button in Settings and add it again."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "macOS привязала доступ к старой подписи. Удалите Голосок кнопкой «–» в Настройках и добавьте снова."
+            "value": "macOS привязала доступ к старой подписи. Удалите ГолосЯку кнопкой «–» в Настройках и добавьте снова."
           }
         }
       }

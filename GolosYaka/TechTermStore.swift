@@ -58,7 +58,7 @@ final class TechTermStore: ObservableObject {
     @Published private(set) var candidateVerificationMessage: LocalizedMessage?
     @Published private(set) var candidateVerificationIsError = false
 
-    private let ioQueue = DispatchQueue(label: "Golosok.TechTermStore.io")
+    private let ioQueue = DispatchQueue(label: "GolosYaka.TechTermStore.io")
     private let stateLock = NSRecursiveLock()
     private var compiledRegexCache: [(regex: NSRegularExpression, canonical: String)] = []
     private var verificationStartedAt: Date?
@@ -74,17 +74,11 @@ final class TechTermStore: ObservableObject {
     }
 
     private var fileURL: URL? {
-        guard let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first else { return nil }
-        let dir = base.appendingPathComponent("Golosok", isDirectory: true)
-        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-        return dir.appendingPathComponent("terms_dictionary.json")
+        AppPaths.applicationSupportDirectory?.appendingPathComponent("terms_dictionary.json")
     }
 
     private var candidatesFileURL: URL? {
-        guard let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first else { return nil }
-        let dir = base.appendingPathComponent("Golosok", isDirectory: true)
-        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-        return dir.appendingPathComponent("terms_candidates.json")
+        AppPaths.applicationSupportDirectory?.appendingPathComponent("terms_candidates.json")
     }
 
     // MARK: - Public API
@@ -117,6 +111,18 @@ final class TechTermStore: ObservableObject {
         rules.remove(at: idx)
         rebuildRegexCache()
         persist()
+    }
+
+    /// Удаляет все правила со снятым переключателем применения одним пакетом
+    /// (одна запись на диск вместо N).
+    @discardableResult
+    func deleteDisabled() -> Int {
+        let removed = rules.filter { !$0.isEnabled }.count
+        guard removed > 0 else { return 0 }
+        rules.removeAll { !$0.isEnabled }
+        rebuildRegexCache()
+        persist()
+        return removed
     }
 
     func toggle(id: String) {

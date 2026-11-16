@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Генерирует en.lproj/ru.lproj/Localizable.strings из Golosok/Localizable.xcstrings.
+Генерирует en.lproj/ru.lproj/Localizable.strings из GolosYaka/Localizable.xcstrings.
 
 Единственный источник локализаций — String Catalog. Скрипт падает, если у ключа нет
 одного из двух переводов, чтобы в бандл не попал полупустой .strings.

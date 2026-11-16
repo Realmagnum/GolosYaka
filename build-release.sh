@@ -1,19 +1,19 @@
 #!/bin/bash
-# Релизная сборка Golosok: universal .app с реальными ресурсами, подпись,
+# Релизная сборка GolosYaka: universal .app с реальными ресурсами, подпись,
 # DMG и (опционально) нотаризация + staple.
 #
 # Использование:
 #   ./build-release.sh                                   # ad-hoc подпись, DMG без нотаризации
 #   ./build-release.sh --identity "Developer ID Application: Name (TEAMID)"
-#   ./build-release.sh --identity "Developer ID Application: Name (TEAMID)" --notary-profile golosok
+#   ./build-release.sh --identity "Developer ID Application: Name (TEAMID)" --notary-profile golosyaka
 #   ./build-release.sh --version 1.14.0 --output ./dist
 #
 # Переменные окружения:
-#   GOLOSOK_RESOURCES_DIR  — каталог с ffmpeg/whisper-cli/transcribe-cli/gigaam.gguf
-#   GOLOSOK_BUILD_ROOT     — куда складывать рабочую сборку (по умолчанию ../Golosok-Build)
+#   GOLOSYAKA_RESOURCES_DIR  — каталог с ffmpeg/whisper-cli/transcribe-cli/gigaam.gguf
+#   GOLOSYAKA_BUILD_ROOT     — куда складывать рабочую сборку (по умолчанию ../GolosYaka-Build)
 #
 # Нотаризация требует сохранённого профиля notarytool:
-#   xcrun notarytool store-credentials golosok --apple-id ... --team-id ... --password ...
+#   xcrun notarytool store-credentials golosyaka --apple-id ... --team-id ... --password ...
 
 set -euo pipefail
 
@@ -43,9 +43,9 @@ while [[ $# -gt 0 ]]; do
 done
 
 BUILD_NUMBER="$(read_build_number)"
-BUILD_ROOT="${GOLOSOK_BUILD_ROOT:-$(dirname "$ROOT")/Golosok-Build}"
-APP_PATH="$BUILD_ROOT/Golosok.app"
-DMG_PATH="$OUTPUT_DIR/Golosok-$VERSION.dmg"
+BUILD_ROOT="${GOLOSYAKA_BUILD_ROOT:-$(dirname "$ROOT")/GolosYaka-Build}"
+APP_PATH="$BUILD_ROOT/GolosYaka.app"
+DMG_PATH="$OUTPUT_DIR/GolosYaka-$VERSION.dmg"
 
 print_banner "release v${VERSION} (build ${BUILD_NUMBER}, ${ARCHS})"
 
@@ -57,7 +57,7 @@ fi
 
 if [[ -z "$IDENTITY" ]]; then
     echo "⚠️  Developer ID не найден — подпись ad-hoc."
-    echo "    Пользователям понадобится: xattr -cr /Applications/Golosok.app"
+    echo "    Пользователям понадобится: xattr -cr /Applications/GolosYaka.app"
     IDENTITY="-"
 fi
 
@@ -71,8 +71,8 @@ verify_invariants
 
 WORK_DIR="$(mktemp -d)"
 trap 'rm -rf "$WORK_DIR"' EXIT
-compile_binary "$ARCHS" "$WORK_DIR/Golosok"
-stage_bundle "$APP_PATH" "$WORK_DIR/Golosok" "$VERSION" "$BUILD_NUMBER"
+compile_binary "$ARCHS" "$WORK_DIR/GolosYaka"
+stage_bundle "$APP_PATH" "$WORK_DIR/GolosYaka" "$VERSION" "$BUILD_NUMBER"
 
 # Вложенные исполняемые файлы (ffmpeg, whisper-cli, transcribe-cli) должны быть подписаны
 # до подписи бандла, иначе notarization вернёт "The signature of the binary is invalid".
@@ -89,16 +89,16 @@ sign_bundle "$APP_PATH" "$IDENTITY" "$HARDENED"
 mkdir -p "$OUTPUT_DIR"
 STAGE_DIR="$WORK_DIR/dmg"
 mkdir -p "$STAGE_DIR"
-cp -R "$APP_PATH" "$STAGE_DIR/Golosok.app"
+cp -R "$APP_PATH" "$STAGE_DIR/GolosYaka.app"
 ln -s /Applications "$STAGE_DIR/Applications"
 
 # Без нотаризации пользователь обязан снять карантин руками — инструкция едет в самом DMG.
 cat > "$STAGE_DIR/INSTALL.txt" <<'README_FIRST'
-Golosok — первое открытие / First launch
+GolosYaka — первое открытие / First launch
 ========================================
 
-1. Перетащите Golosok.app в папку Applications.
-   Drag Golosok.app into the Applications folder.
+1. Перетащите GolosYaka.app в папку Applications.
+   Drag GolosYaka.app into the Applications folder.
 
 2. Сборка подписана ad-hoc: у проекта нет платного сертификата Apple Developer,
    поэтому Gatekeeper предупредит при первом запуске.
@@ -106,11 +106,11 @@ Golosok — первое открытие / First launch
    Gatekeeper will warn on the first launch.
 
    Терминал (надёжнее всего) / Terminal:
-     xattr -cr /Applications/Golosok.app
-     open /Applications/Golosok.app
+     xattr -cr /Applications/GolosYaka.app
+     open /Applications/GolosYaka.app
 
-   Или через Finder: правый клик по Golosok.app → «Открыть» → «Открыть».
-   Or in Finder: right-click Golosok.app -> Open -> Open.
+   Или через Finder: правый клик по GolosYaka.app → «Открыть» → «Открыть».
+   Or in Finder: right-click GolosYaka.app -> Open -> Open.
 
    Или: Системные настройки → Конфиденциальность и безопасность →
    «Всё равно открыть».
@@ -120,17 +120,17 @@ Golosok — первое открытие / First launch
    Allow Microphone and Accessibility.
 
 4. После обновления на новую версию macOS может снова спросить
-   Универсальный доступ: удалите Голосок из списка кнопкой «−» и добавьте заново.
+   Универсальный доступ: удалите ГолосЯку из списка кнопкой «−» и добавьте заново.
    После каждого обновления ad-hoc подпись меняется, поэтому разрешение может слетать.
    After an update the ad-hoc signature changes, so macOS may ask for
-   Accessibility again: remove Golosok with "-" and add it back.
+   Accessibility again: remove GolosYaka with "-" and add it back.
 
 Подробности / Details: https://github.com/Realmagnum/Golosok
 README_FIRST
 
 echo "==> Создание DMG: $DMG_PATH"
 rm -f "$DMG_PATH"
-if ! hdiutil create -volname "Golosok $VERSION" -srcfolder "$STAGE_DIR" -ov -format UDZO -quiet "$DMG_PATH"; then
+if ! hdiutil create -volname "GolosYaka $VERSION" -srcfolder "$STAGE_DIR" -ov -format UDZO -quiet "$DMG_PATH"; then
     # На машинах, где Disk Arbitration недоступен (CI-песочницы), UDIF-образы не создаются.
     # makehybrid не требует устройства и даёт валидный HFS-образ; размер чуть больше.
     echo "⚠️  UDIF недоступен, использую makehybrid (HFS, без сжатия)"
@@ -163,7 +163,7 @@ shasum -a 256 "$DMG_PATH" | tee "$DMG_PATH.sha256"
 if [[ "$IDENTITY" == "-" ]]; then
     echo "⚠️  Бандл подписан ad-hoc: нотаризация недоступна, Gatekeeper заблокирует первый запуск."
     echo "    В DMG положен INSTALL.txt с инструкцией. Пользователю нужно выполнить:"
-    echo "      xattr -cr /Applications/Golosok.app"
+    echo "      xattr -cr /Applications/GolosYaka.app"
 else
     echo "==> Оценка Gatekeeper..."
     spctl --assess --type execute --verbose=4 "$APP_PATH" || true

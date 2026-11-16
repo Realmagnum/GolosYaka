@@ -12,16 +12,13 @@ final class PromptStore: ObservableObject {
         templates.filter { !$0.isInternalSystem }
     }
 
-    private let ioQueue = DispatchQueue(label: "Golosok.PromptStore.io")
+    private let ioQueue = DispatchQueue(label: "GolosYaka.PromptStore.io")
     private static let migrationsKey = "promptstore.migrated.v1"
 
     private init() { load() }
 
     private var fileURL: URL? {
-        guard let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first else { return nil }
-        let dir = base.appendingPathComponent("Golosok", isDirectory: true)
-        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-        return dir.appendingPathComponent("prompts.json")
+        AppPaths.applicationSupportDirectory?.appendingPathComponent("prompts.json")
     }
 
     // MARK: - Public API

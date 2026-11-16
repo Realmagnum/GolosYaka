@@ -85,7 +85,7 @@ struct OnboardingView: View {
                                     }
                                 }
                                 Text(permissions.isAccessibilityMismatch ?
-                                     LocalizedStringKey("macOS привязала доступ к старой подписи. Удалите Голосок кнопкой «–» в Настройках и добавьте снова.") :
+                                     LocalizedStringKey("macOS привязала доступ к старой подписи. Удалите ГолосЯку кнопкой «–» в Настройках и добавьте снова.") :
                                      LocalizedStringKey("Мгновенная вставка распознанного текста в активное окно"))
                                     .font(UIStyleFont.body(size: 12, weight: .regular))
                                     .foregroundColor(permissions.isAccessibilityMismatch ? .uiWarn : .uiMidGray)

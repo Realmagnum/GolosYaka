@@ -5,7 +5,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>ru</string>
 	<key>CFBundleExecutable</key>
-	<string>Golosok</string>
+	<string>GolosYaka</string>
 	<key>CFBundleIconFile</key>
 	<string>AppIcon</string>
 	<key>CFBundleIconName</key>
@@ -15,7 +15,7 @@
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
-	<string>Golosok</string>
+	<string>GolosYaka</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
@@ -36,6 +36,6 @@
 		<true/>
 	</dict>
 	<key>NSMicrophoneUsageDescription</key>
-	<string>Голосок просит микрофон для транскрибации / Golosok needs the microphone to transcribe speech.</string>
+	<string>ГолосЯка просит микрофон для транскрибации / GolosYaka needs the microphone to transcribe speech.</string>
 </dict>
 </plist>

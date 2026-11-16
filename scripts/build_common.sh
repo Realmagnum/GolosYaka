@@ -1,17 +1,25 @@
 #!/bin/bash
-# Общие шаги сборки Golosok. Подключается через `source` из build-dev.sh и build-release.sh.
+# Общие шаги сборки GolosYaka. Подключается через `source` из build-dev.sh и build-release.sh.
 # Требования: macOS, Command Line Tools (swiftc), rsync, python3.
 
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
-GOLOSOK_MIN_OS="${GOLOSOK_MIN_OS:-13.0}"
-GOLOSOK_BUNDLE_ID="${GOLOSOK_BUNDLE_ID:-kozak-developer.Golosok}"
-GOLOSOK_EXECUTABLE="Golosok"
+GOLOSYAKA_MIN_OS="${GOLOSYAKA_MIN_OS:-13.0}"
+GOLOSYAKA_BUNDLE_ID="${GOLOSYAKA_BUNDLE_ID:-com.realmagnum.GolosYaka}"
+GOLOSYAKA_EXECUTABLE="GolosYaka"
 # Откуда берутся реальные ресурсы (ffmpeg, whisper-cli, transcribe-cli, модель GigaAM).
-# Можно переопределить: GOLOSOK_RESOURCES_DIR=/path/to/Resources ./build-release.sh
-GOLOSOK_RESOURCES_SRC="${GOLOSOK_RESOURCES_DIR:-/Applications/Golosok.app/Contents/Resources}"
+# Можно переопределить: GOLOSYAKA_RESOURCES_DIR=/path/to/Resources ./build-release.sh
+# Иначе ищем установленное приложение: сначала новое имя, затем старое (Golosok) — ресурсы
+# у форка те же, а старая установка ещё может быть на месте.
+if [[ -n "${GOLOSYAKA_RESOURCES_DIR:-}" ]]; then
+    GOLOSYAKA_RESOURCES_SRC="$GOLOSYAKA_RESOURCES_DIR"
+elif [[ -d "/Applications/GolosYaka.app/Contents/Resources" ]]; then
+    GOLOSYAKA_RESOURCES_SRC="/Applications/GolosYaka.app/Contents/Resources"
+else
+    GOLOSYAKA_RESOURCES_SRC="/Applications/Golosok.app/Contents/Resources"
+fi
 
 read_version() {
     local version
@@ -40,16 +48,16 @@ compile_binary() {
     local output="$2"
     local sdk
     sdk="$(xcrun --show-sdk-path)"
-    local -a inputs=("$ROOT"/Golosok/*.swift)
+    local -a inputs=("$ROOT"/GolosYaka/*.swift)
     local tmp_dir
     tmp_dir="$(mktemp -d)"
     trap 'rm -rf "$tmp_dir"' RETURN
 
     local -a targets=()
     case "$archs" in
-        universal) targets=("arm64-apple-macos${GOLOSOK_MIN_OS}" "x86_64-apple-macos${GOLOSOK_MIN_OS}") ;;
-        arm64) targets=("arm64-apple-macos${GOLOSOK_MIN_OS}") ;;
-        x86_64) targets=("x86_64-apple-macos${GOLOSOK_MIN_OS}") ;;
+        universal) targets=("arm64-apple-macos${GOLOSYAKA_MIN_OS}" "x86_64-apple-macos${GOLOSYAKA_MIN_OS}") ;;
+        arm64) targets=("arm64-apple-macos${GOLOSYAKA_MIN_OS}") ;;
+        x86_64) targets=("x86_64-apple-macos${GOLOSYAKA_MIN_OS}") ;;
         *) echo "❌ Неизвестная архитектура: $archs" >&2; return 1 ;;
     esac
 
@@ -98,22 +106,22 @@ stage_bundle() {
     mkdir -p "$contents/MacOS" "$resources"
     printf 'APPL????' > "$contents/PkgInfo"
 
-    cp "$binary" "$contents/MacOS/$GOLOSOK_EXECUTABLE"
+    cp "$binary" "$contents/MacOS/$GOLOSYAKA_EXECUTABLE"
 
-    if [[ ! -d "$GOLOSOK_RESOURCES_SRC" ]]; then
-        echo "❌ Не найдены исходные ресурсы: $GOLOSOK_RESOURCES_SRC" >&2
-        echo "   Укажите каталог: GOLOSOK_RESOURCES_DIR=/path/to/Resources" >&2
+    if [[ ! -d "$GOLOSYAKA_RESOURCES_SRC" ]]; then
+        echo "❌ Не найдены исходные ресурсы: $GOLOSYAKA_RESOURCES_SRC" >&2
+        echo "   Укажите каталог: GOLOSYAKA_RESOURCES_DIR=/path/to/Resources" >&2
         return 1
     fi
 
-    echo "==> Копирование ресурсов реальными файлами (без симлинков): $GOLOSOK_RESOURCES_SRC"
+    echo "==> Копирование ресурсов реальными файлами (без симлинков): $GOLOSYAKA_RESOURCES_SRC"
     # --copy-links разворачивает симлинки старого dev-бандла, --exclude .lproj —
     # локализации генерируются из String Catalog ниже.
     rsync -a --copy-links --exclude '*.lproj' --exclude '.DS_Store' --exclude 'README.md' \
-        "$GOLOSOK_RESOURCES_SRC"/ "$resources"/
+        "$GOLOSYAKA_RESOURCES_SRC"/ "$resources"/
 
     python3 "$ROOT/scripts/generate_localizations.py" \
-        --xcstrings "$ROOT/Golosok/Localizable.xcstrings" \
+        --xcstrings "$ROOT/GolosYaka/Localizable.xcstrings" \
         --resources-dir "$resources"
 
     # Юридические тексты обязаны ехать внутри бандла, а не только в репозитории.
@@ -125,9 +133,9 @@ stage_bundle() {
         --output "$contents/Info.plist" \
         --marketing-version "$version" \
         --build-number "$build_number" \
-        --min-os "$GOLOSOK_MIN_OS" \
-        --bundle-id "$GOLOSOK_BUNDLE_ID" \
-        --executable "$GOLOSOK_EXECUTABLE"
+        --min-os "$GOLOSYAKA_MIN_OS" \
+        --bundle-id "$GOLOSYAKA_BUNDLE_ID" \
+        --executable "$GOLOSYAKA_EXECUTABLE"
 
     enforce_no_symlinks "$bundle"
 }
@@ -139,7 +147,7 @@ sign_bundle() {
     local hardened="${3:-}"
 
     xattr -cr "$bundle"
-    local -a args=(--force --deep --timestamp --options runtime --entitlements "$ROOT/Golosok.entitlements")
+    local -a args=(--force --deep --timestamp --options runtime --entitlements "$ROOT/GolosYaka.entitlements")
     if [[ "$hardened" != "hardened" ]]; then
         args=(--force --deep)
     fi
@@ -153,6 +161,6 @@ sign_bundle() {
 
 print_banner() {
     echo "╭──────────────────────────────────────────────╮"
-    printf "│ Golosok %-36s│\n" "$1"
+    printf "│ GolosYaka %-36s│\n" "$1"
     echo "╰──────────────────────────────────────────────╯"
 }

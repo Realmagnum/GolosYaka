@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Audit historical 25-second GigaAM chunk boundaries against whole-window ASR.
 
-Reads only the local Golosok history/audio archive and bundled transcribe-cli.
+Reads only the local GolosYaka history/audio archive and bundled transcribe-cli.
 Outputs anonymized recording IDs, timing, text hypotheses and a JSON report locally.
 """
 
@@ -122,10 +122,10 @@ def extract_window(source: Path, destination: Path, start: float, end: float) ->
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--history", type=Path, default=Path.home() / "Library/Application Support/Golosok/history.json")
-    parser.add_argument("--audio-dir", type=Path, default=Path.home() / "Library/Application Support/Golosok/Audio")
-    parser.add_argument("--cli", type=Path, default=Path("/Applications/Golosok.app/Contents/Resources/transcribe-cli"))
-    parser.add_argument("--model", type=Path, default=Path("/Applications/Golosok.app/Contents/Resources/gigaam.gguf"))
+    parser.add_argument("--history", type=Path, default=Path.home() / "Library/Application Support/GolosYaka/history.json")
+    parser.add_argument("--audio-dir", type=Path, default=Path.home() / "Library/Application Support/GolosYaka/Audio")
+    parser.add_argument("--cli", type=Path, default=Path("/Applications/GolosYaka.app/Contents/Resources/transcribe-cli"))
+    parser.add_argument("--model", type=Path, default=Path("/Applications/GolosYaka.app/Contents/Resources/gigaam.gguf"))
     parser.add_argument("--window", type=float, default=4.0, help="seconds of context on each side of the old boundary")
     parser.add_argument("--repeats", type=int, default=2, help="number of repeats per split half for ASR variance")
     parser.add_argument("--resume", action="store_true", help="resume from existing partial JSON report")
@@ -183,7 +183,7 @@ def main() -> int:
             eligible_boundary_index += 1
             do_repeat = args.repeat_every > 0 and (eligible_boundary_index - 1) % args.repeat_every == 0
             core_lo, core_hi = max(0, boundary - 2.0), min(duration, boundary + 2.0)
-            with tempfile.TemporaryDirectory(prefix="golosok-boundary-") as temp:
+            with tempfile.TemporaryDirectory(prefix="golosyaka-boundary-") as temp:
                 temp = Path(temp)
                 whole, whole_time = temp / "continuous.wav", 0.0
                 left, right = temp / "left.wav", temp / "right.wav"

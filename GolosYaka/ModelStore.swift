@@ -170,10 +170,7 @@ final class ModelStore: NSObject, ObservableObject {
     // MARK: - Управление кастомными инференсами
 
     private var customModelsFileURL: URL? {
-        guard let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first else { return nil }
-        let dir = base.appendingPathComponent("Golosok", isDirectory: true)
-        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-        return dir.appendingPathComponent("custom_inferences.json")
+        AppPaths.applicationSupportDirectory?.appendingPathComponent("custom_inferences.json")
     }
 
     func addCustomModel(name: String, endpointURL: String, modelIdentifier: String, apiKey: String?) {
@@ -249,9 +246,8 @@ final class ModelStore: NSObject, ObservableObject {
     }
 
     private var modelsDir: URL {
-        let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
-            ?? FileManager.default.temporaryDirectory
-        return base.appendingPathComponent("Golosok/Models", isDirectory: true)
+        AppPaths.modelsDirectory
+            ?? FileManager.default.temporaryDirectory.appendingPathComponent("GolosYaka/Models", isDirectory: true)
     }
 
     func localModelPath(for id: String) -> String? {

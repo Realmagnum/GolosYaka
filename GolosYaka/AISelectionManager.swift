@@ -38,7 +38,7 @@ final class AISelectionManager {
         // Проверка настройки ИИ-провайдера (Ollama, llama-server или облачные API)
         guard AIProviderStore.shared.isConfigured else {
             AppLogger.shared.warn("AISelection", "ИИ-провайдер не настроен")
-            AudioCapture.shared.cancelAIProcessing(warning: .key("Настройте ИИ-провайдер в Голоске"))
+            AudioCapture.shared.cancelAIProcessing(warning: .key("Настройте ИИ-провайдер в ГолосЯке"))
             return
         }
 
@@ -177,7 +177,7 @@ final class AISelectionManager {
         isBusy = true
         AppLogger.shared.info("AISelection", "Применение шаблона", details: "\(template.title) для \(text.count) символов")
 
-        // Запуск красивого плавающего оверлея Голоска
+        // Запуск красивого плавающего оверлея ГолосЯки
         AudioCapture.shared.startAIProcessing(status: "ИИ-обработка...")
 
         // Подключаем монитор Esc для возможности отмены длинной генерации
@@ -269,7 +269,7 @@ final class AISelectionManager {
             AudioCapture.shared.finishAIProcessing()
             AppLogger.shared.info("AISelection", "Выделенный текст успешно заменен", details: "\(targetApp.localizedName ?? "приложение"), вставлено \(newText.count) симв.")
 
-            // Сохраняем в историю заметок Голоска в формате «Было / Стало» с отметкой ИИ
+            // Сохраняем в историю заметок ГолосЯки в формате «Было / Стало» с отметкой ИИ
             AudioCapture.shared.addAINote(originalText: originalText, transformedText: newText, templateTitle: templateTitle)
         }
     }

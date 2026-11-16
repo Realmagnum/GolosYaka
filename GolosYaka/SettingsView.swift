@@ -93,7 +93,7 @@ struct SettingsView: View {
                                 Text(permissions.isAccessibilityGranted ?
                                      LocalizedStringKey("Печатать расшифровку прямо в место курсора") :
                                      (permissions.isAccessibilityMismatch ?
-                                      LocalizedStringKey("macOS привязала доступ к старой подписи. Удалите Голосок кнопкой «–» в Настройках и добавьте снова.") :
+                                      LocalizedStringKey("macOS привязала доступ к старой подписи. Удалите ГолосЯку кнопкой «–» в Настройках и добавьте снова.") :
                                       LocalizedStringKey("Выдайте доступ в Универсальном доступе macOS")))
                                     .font(UIStyleFont.body(size: 11, weight: .regular))
                                     .foregroundColor(permissions.isAccessibilityMismatch ? .uiWarn : .uiMidGray)

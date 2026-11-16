@@ -1,14 +1,14 @@
-// Локальный smoke-набор Golosok.
+// Локальный smoke-набор GolosYaka.
 //
 // Запускается без Xcode: `./scripts/run-tests.sh` компилирует приложение как модуль
 // с `-enable-testing` и прогоняет проверки ниже. Полный набор на Swift Testing
-// (GolosokTests/GolosokTests.swift) выполняется в CI через xcodebuild, где есть Xcode.
+// (GolosYakaTests/GolosYakaTests.swift) выполняется в CI через xcodebuild, где есть Xcode.
 //
 // Правило: каждая проверка — чистая функция без сети, UI и доступа к диску.
 
 import Foundation
 import AppKit
-@testable import Golosok
+@testable import GolosYaka
 
 // MARK: - Минимальный assert-раннер
 
@@ -171,7 +171,7 @@ r.expectEqual(AudioCapture.compareVersions("2.0", "1.99.9"), .orderedDescending,
 r.expect(AudioCapture.isTrustedReleaseAsset(URL(string: "https://github.com/Realmagnum/Golosok/releases/download/v1/dmg")!), "GitHub-ассет доверенный")
 r.expect(AudioCapture.isTrustedReleaseAsset(URL(string: "https://objects.githubusercontent.com/file")!), "CDN GitHub доверенный")
 r.expect(!AudioCapture.isTrustedReleaseAsset(URL(string: "http://github.com/file")!), "HTTP не доверяем")
-r.expect(!AudioCapture.isTrustedReleaseAsset(URL(string: "https://evil.example.com/Golosok.dmg")!), "Чужой хост не доверяем")
+r.expect(!AudioCapture.isTrustedReleaseAsset(URL(string: "https://evil.example.com/GolosYaka.dmg")!), "Чужой хост не доверяем")
 
 // Выравнивание слов
 do {
@@ -200,6 +200,11 @@ do {
     r.expectEqual(TranscriptSearch.matchedRanges(in: "кот пошёл к коту за котёнком", query: "кот").count, 3, "Все вхождения в тексте")
     r.expect(TranscriptSearch.matchedRanges(in: "текст", query: "").isEmpty, "Пустой запрос в тексте — нет совпадений")
 }
+
+// Ренейм и миграция данных
+r.expectEqual(AppPaths.folderName, "GolosYaka", "Каталог данных нового бренда")
+r.expectEqual(AppPaths.legacyFolderName, "Golosok", "Каталог предыдущей версии")
+r.expectEqual(LegacyMigration.legacyBundleIdentifier, "kozak-developer.Golosok", "Bundle id предыдущей версии")
 
 // Дашборд
 do {

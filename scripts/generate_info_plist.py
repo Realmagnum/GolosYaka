@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Генерирует Info.plist бандла Golosok из шаблона Info.plist.
+Генерирует Info.plist бандла GolosYaka из шаблона Info.plist.
 
 Шаблон содержит переменные сборки ($(MARKETING_VERSION), $(CURRENT_PROJECT_VERSION),
 $(PRODUCT_BUNDLE_IDENTIFIER), $(MACOSX_DEPLOYMENT_TARGET)) — те же, что подставляет Xcode,
@@ -26,7 +26,7 @@ def main() -> int:
     parser.add_argument("--build-number", required=True)
     parser.add_argument("--min-os", required=True)
     parser.add_argument("--bundle-id", required=True)
-    parser.add_argument("--executable", default="Golosok")
+    parser.add_argument("--executable", default="GolosYaka")
     args = parser.parse_args()
 
     template = Path(args.template)

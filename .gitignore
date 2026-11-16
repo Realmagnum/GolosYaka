@@ -4,11 +4,11 @@ xcuserdata/
 __pycache__/
 *.pyc
 
-# Собираемые артефакты и тяжёлые бинарники (кладутся в бандл из GOLOSOK_RESOURCES_DIR)
+# Собираемые артефакты и тяжёлые бинарники (кладутся в бандл из GOLOSYAKA_RESOURCES_DIR)
 dist/
 *.gguf
 transcribe-cli
 whisper-cli
 ffmpeg
-Golosok/whisper-cli
-Golosok/ffmpeg
+GolosYaka/whisper-cli
+GolosYaka/ffmpeg

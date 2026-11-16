@@ -248,10 +248,7 @@ final class AIProviderStore: ObservableObject {
     private static let defaults = UserDefaults.standard
 
     private var customPresetsFileURL: URL? {
-        guard let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first else { return nil }
-        let dir = base.appendingPathComponent("Golosok", isDirectory: true)
-        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-        return dir.appendingPathComponent("custom_ai_providers.json")
+        AppPaths.applicationSupportDirectory?.appendingPathComponent("custom_ai_providers.json")
     }
 
     private init() {
@@ -263,8 +260,8 @@ final class AIProviderStore: ObservableObject {
 
         // Загрузка кастомных провайдеров
         var loadedCustom: [AIProviderPreset] = []
-        if let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first {
-            let fileURL = base.appendingPathComponent("Golosok/custom_ai_providers.json")
+        if let dir = AppPaths.applicationSupportDirectory {
+            let fileURL = dir.appendingPathComponent("custom_ai_providers.json")
             if let data = try? Data(contentsOf: fileURL),
                let list = try? JSONDecoder().decode([AIProviderPreset].self, from: data) {
                 loadedCustom = list

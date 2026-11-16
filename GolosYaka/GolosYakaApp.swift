@@ -6,7 +6,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         KeyStore.migrateAllIfNeeded()
         let mic = PermissionManager.shared.isMicGranted
         let ax = PermissionManager.shared.isAccessibilityGranted
-        AppLogger.shared.info("App", "Запуск Golosok",
+        AppLogger.shared.info("App", "Запуск GolosYaka",
                               details: "версия \(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "?"), микрофон: \(mic), доступ AX: \(ax)")
         let hotKey = NativeHotKeyManager.shared
         hotKey.onHotKeyPressed = {
@@ -30,8 +30,20 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 }
 
+/// Явная точка входа вместо `@main` на `App`.
+///
+/// Свойства `App` инициализируются до его `init()`, а они читают `UserDefaults`
+/// (AudioCapture, LanguageSettings). Поэтому миграция из старого домена должна
+/// выполниться ещё до создания `GolosYakaApp`.
 @main
-struct GolosokApp: App {
+enum GolosYakaLauncher {
+    static func main() {
+        LegacyMigration.runIfNeeded()
+        GolosYakaApp.main()
+    }
+}
+
+struct GolosYakaApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     @ObservedObject var audioCapture = AudioCapture.shared
     @ObservedObject var language = LanguageSettings.shared
@@ -84,7 +96,7 @@ struct GolosokApp: App {
 
         .defaultSize(width: 990, height: 710)
         
-        MenuBarExtra(L10n.tr("Голосок"), systemImage: "waveform") {
+        MenuBarExtra(L10n.tr("ГолосЯка"), systemImage: "waveform") {
             Button(L10n.tr("Скопировать последнюю запись")) {
                 if let last = audioCapture.history.first?.text {
                     NSPasteboard.general.clearContents()
@@ -99,7 +111,7 @@ struct GolosokApp: App {
                 AudioCapture.shared.importAndTranscribeFile()
             }
             
-            Button(L10n.tr("Развернуть Голосок")) {
+            Button(L10n.tr("Развернуть ГолосЯку")) {
                 NSApp.activate(ignoringOtherApps: true)
                 if let window = NSApplication.shared.windows.first {
                     window.makeKeyAndOrderFront(nil)

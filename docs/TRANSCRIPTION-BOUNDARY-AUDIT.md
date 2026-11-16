@@ -11,19 +11,19 @@
 Запуск:
 
 ```sh
-python3 scripts/audit_transcription_boundaries.py --limit 10 --output /private/var/folders/cd/hdxd5b152zg41s49034nwpsm0000gn/T/golosok-boundary-audit.json
+python3 scripts/audit_transcription_boundaries.py --limit 10 --output /private/var/folders/cd/hdxd5b152zg41s49034nwpsm0000gn/T/golosyaka-boundary-audit.json
 ```
 
 Полный аудит выполнен так:
 
 ```sh
-python3 scripts/audit_transcription_boundaries.py --repeats 3 --repeat-every 10 --output /private/var/folders/cd/hdxd5b152zg41s49034nwpsm0000gn/T/golosok-boundary-audit-full-r3.json
-python3 scripts/summarize_boundary_audit.py /private/var/folders/cd/hdxd5b152zg41s49034nwpsm0000gn/T/golosok-boundary-audit-full-r3.json
+python3 scripts/audit_transcription_boundaries.py --repeats 3 --repeat-every 10 --output /private/var/folders/cd/hdxd5b152zg41s49034nwpsm0000gn/T/golosyaka-boundary-audit-full-r3.json
+python3 scripts/summarize_boundary_audit.py /private/var/folders/cd/hdxd5b152zg41s49034nwpsm0000gn/T/golosyaka-boundary-audit-full-r3.json
 ```
 
 JSON-отчёт содержит распознанную пользовательскую речь: оставлять локально, не коммитить и не прикладывать к issue без проверки приватности.
 
-По умолчанию скрипт использует локальную историю, сохранённые WAV и GigaAM `transcribe-cli` из `/Applications/Golosok.app`. Ничего не передаётся в сеть. На каждой прежней границе он сравнивает отдельные полные окна слева/справа (до 4 секунд) с цельным контекстным окном ±4 секунды; повторяет split halves три раза на каждой десятой границе; дополнительно распознаёт 2-секундные core-фрагменты. Из 319 номинальных границ 41 исключена из-за недостатка правого контекста (не менее 2 секунд), осталось 278.
+По умолчанию скрипт использует локальную историю, сохранённые WAV и GigaAM `transcribe-cli` из `/Applications/GolosYaka.app`. Ничего не передаётся в сеть. На каждой прежней границе он сравнивает отдельные полные окна слева/справа (до 4 секунд) с цельным контекстным окном ±4 секунды; повторяет split halves три раза на каждой десятой границе; дополнительно распознаёт 2-секундные core-фрагменты. Из 319 номинальных границ 41 исключена из-за недостатка правого контекста (не менее 2 секунд), осталось 278.
 
 ### Как трактовать результат
 

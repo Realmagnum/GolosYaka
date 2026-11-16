@@ -1,13 +1,13 @@
 //
-//  GolosokUITestsLaunchTests.swift
-//  GolosokUITests
+//  GolosYakaUITestsLaunchTests.swift
+//  GolosYakaUITests
 //
 //  Created by kozak_dev on 26.07.2026.
 //
 
 import XCTest
 
-final class GolosokUITestsLaunchTests: XCTestCase {
+final class GolosYakaUITestsLaunchTests: XCTestCase {
 
     override class var runsForEachTargetApplicationUIConfiguration: Bool {
         true

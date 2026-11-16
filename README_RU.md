@@ -1,12 +1,13 @@
-# Голосок: Локальное распознавание речи для macOS
+# ГолосЯка: Локальное распознавание речи для macOS
 
 **Нативный голосовой ввод на базе Sber GigaAM v3. Инференс на Apple Silicon.**  
 Моментальный ввод текста по `⌥ + Space`, офлайн-расшифровка медиафайлов и опциональная ИИ-обработка через вашего провайдера.
 
 ## Что нового в ветке DEV
 
+* **Переименование в ГолосЯку.** Приложение, bundle id и каталог данных теперь `GolosYaka`. Существующие установки мигрируют автоматически при первом запуске: история, аудио, словарь терминов, промпты, настройки и секреты Keychain переносятся со старых путей `Golosok`.
 * **Расшифровка длинных записей без потери слов.** Длинное аудио делится на перекрывающиеся чанки с адаптивными границами по тишине, поэтому фразы на стыках больше не обрезаются.
-* **Компенсация IT-терминов.** Встроенный словарь возвращает искажённые английские термины (`Tailscale`, `OpenCode`, `Hindsight`, `Ollama`, `Vaultwarden` и др.). Свои термины можно добавлять, импортировать, экспортировать и редактировать.
+* **Компенсация IT-терминов.** Встроенный словарь возвращает искажённые английские термины (`Tailscale`, `OpenCode`, `Hindsight`, `Ollama`, `Vaultwarden` и др.). Свои термины можно добавлять, импортировать, экспортировать, редактировать и удалять прямо в списке; кнопка **«Удалить невыбранное»** убирает все термины со снятым переключателем применения.
 * **Автообучение ИИ с буфером проверки.** Новые созвучные варианты попадают в список кандидатов. Каждого кандидата можно отредактировать, одобрить или отклонить, а накопленный список — проверить пакетно через ИИ.
 * **ИИ-обработка заметок и выделения.** Саммари, протоколы встреч, улучшение стиля, перевод и пользовательские промпты. Результат приходит потоком, с управлением ризонингом.
 * **Горячая клавиша обработки выделения.** Выделите текст в любом приложении и нажмите `⌥ + ⇧ + Space`, чтобы применить ИИ-действие только к фрагменту.
@@ -41,14 +42,14 @@
 
 ## Установка
 
-1. Скачайте актуальный `Golosok.dmg` из раздела [Releases](../../releases).
-2. Перенесите `Golosok.app` в папку `/Applications`.
+1. Скачайте актуальный `GolosYaka.dmg` из раздела [Releases](../../releases).
+2. Перенесите `GolosYaka.app` в папку `/Applications`.
 
 **Снятие карантина macOS (Gatekeeper):**  
 Проект поставляется как Open Source без платной подписи Apple Developer. Чтобы система не блокировала запуск, снимите атрибут карантина через Терминал:
 
 ```bash
-xattr -cr /Applications/Golosok.app
+xattr -cr /Applications/GolosYaka.app
 ```
 
 *(Альтернатива в GUI: Control + правый клик по иконке → Открыть → Подтвердить; или Системные настройки → Конфиденциальность и безопасность → «Всё равно открыть». Та же инструкция лежит в DMG файлом `INSTALL.txt`.)*
@@ -56,7 +57,7 @@ xattr -cr /Applications/Golosok.app
 Сборка подписана **ad-hoc**: предупреждение Gatekeeper — ожидаемо, нотаризация без
 Developer ID невозможна, а подпись меняется с каждым релизом. macOS привязывает
 разрешение «Универсальный доступ» к подписи, поэтому после обновления может понадобиться
-заново добавить Голосок в Системные настройки → Конфиденциальность и безопасность →
+заново добавить ГолосЯку в Системные настройки → Конфиденциальность и безопасность →
 Универсальный доступ.
 
 ## Настройка доступов
@@ -100,13 +101,13 @@ Developer ID невозможна, а подпись меняется с каж�
 ```bash
 # 1. Клонировать репозиторий
 git clone https://github.com/Realmagnum/Golosok.git
-cd Golosok
+cd GolosYaka
 
 # 2. Скачать веса модели GigaAM
-curl -L -o Golosok/gigaam.gguf https://huggingface.co/memoravox/gigaam-v3-e2e-rnnt-gguf/resolve/main/gigaam-v3-e2e-rnnt-Q8_0.gguf
+curl -L -o GolosYaka/gigaam.gguf https://huggingface.co/memoravox/gigaam-v3-e2e-rnnt-gguf/resolve/main/gigaam-v3-e2e-rnnt-Q8_0.gguf
 
 # 3. Открыть проект в Xcode
-open Golosok.xcodeproj
+open GolosYaka.xcodeproj
 ```
 
 В Xcode нажмите `⌘ + R` для сборки и запуска.
@@ -117,19 +118,19 @@ open Golosok.xcodeproj
 ресурсы в бандл реальными файлами, генерируют локализации из String Catalog и
 собирают `Info.plist` с правильной версией.
 
-Ресурсы не хранятся в git. Укажите `GOLOSOK_RESOURCES_DIR` на каталог с `ffmpeg`,
+Ресурсы не хранятся в git. Укажите `GOLOSYAKA_RESOURCES_DIR` на каталог с `ffmpeg`,
 `whisper-cli`, `transcribe-cli`, `gigaam.gguf`, `AppIcon.icns` и `Assets.car`
-(по умолчанию они читаются из установленного `/Applications/Golosok.app`).
+(по умолчанию они читаются из установленного `/Applications/GolosYaka.app`).
 
 ```bash
-# Dev-бандл: universal, ad-hoc подпись, ../Golosok-Build/Golosok-Dev.app
+# Dev-бандл: universal, ad-hoc подпись, ../GolosYaka-Build/GolosYaka-Dev.app
 ./build-dev.sh
 ./build-dev.sh --arch arm64            # быстрее, одна архитектура
 
 # Релиз: universal .app + DMG, подпись Developer ID, опциональная нотаризация
-GOLOSOK_RESOURCES_DIR=/Applications/Golosok.app/Contents/Resources \
+GOLOSYAKA_RESOURCES_DIR=/Applications/GolosYaka.app/Contents/Resources \
   ./build-release.sh --identity "Developer ID Application: Name (TEAMID)" \
-                     --notary-profile golosok
+                     --notary-profile golosyaka
 ```
 
 Версия берётся из файла `VERSION`; `scripts/verify_project_invariants.py` валит сборку,
@@ -148,5 +149,5 @@ cat docs/RELEASE.md
 Если DMG подписан ad-hoc (нет сертификата Developer ID), macOS заблокирует первый запуск:
 
 ```bash
-xattr -cr /Applications/Golosok.app
+xattr -cr /Applications/GolosYaka.app
 ```

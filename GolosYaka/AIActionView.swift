@@ -58,17 +58,14 @@ final class AICache {
 
     private var entries: [Key: Entry] = [:]
     private let limit = 60
-    private let ioQueue = DispatchQueue(label: "Golosok.AICache.io")
+    private let ioQueue = DispatchQueue(label: "GolosYaka.AICache.io")
 
     private init() {
         load()
     }
 
     private var fileURL: URL? {
-        guard let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first else { return nil }
-        let dir = base.appendingPathComponent("Golosok", isDirectory: true)
-        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-        return dir.appendingPathComponent("ai_cache.json")
+        AppPaths.applicationSupportDirectory?.appendingPathComponent("ai_cache.json")
     }
 
     func result(noteID: UUID, templateID: String, scopeID: String = "", for text: String) -> String? {

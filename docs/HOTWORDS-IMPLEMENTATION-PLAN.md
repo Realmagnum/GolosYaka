@@ -13,7 +13,7 @@
 
 ## Этап 1. Исследование и валидация CLI-рантайма
 1. **Анализ текущего `transcribe-cli`:**
-   * Проверить сборку `transcribe-cli` в бандле `Golosok-Dev.app` / `Resources`.
+   * Проверить сборку `transcribe-cli` в бандле `GolosYaka-Dev.app` / `Resources`.
    * Определить поддержку аргументов контекстного смещения или n-gram LM для GGUF RNN-T.
    * *Примечание:* Для whisper доступен `--initial-prompt`. Для RNN-T GGUF прямой флаг hotwords отсутствует.
 2. **Оценка интеграции `sherpa-onnx` для GigaAM v3:**
@@ -23,7 +23,7 @@
 
 ## Этап 2. Прототипирование Hotwords с графом Aho-Corasick
 1. **Подготовка тестового аудио-сета:**
-   * Сформировать 10–15 WAV-файлов из реальной папки `~/Library/Application Support/Golosok/Audio/`, содержащих термины:
+   * Сформировать 10–15 WAV-файлов из реальной папки `~/Library/Application Support/GolosYaka/Audio/`, содержащих термины:
      * *Tailscale*, *Hindsight*, *OpenCode*, *Vaultwarden*, *LLDP/SNMP*, *Ollama*.
 2. **Генерация hotwords-словаря:**
    * Преобразование списка канонических слов в BPE-токены словаря GigaAM.
@@ -43,7 +43,7 @@
 3. **Оценка вычислительной целесообразности:**
    * Измерение просадки FPS / RTF при Beam Search против Greedy Search.
 
-## Этап 4. Интеграция в Swift-код «Голоска»
+## Этап 4. Интеграция в Swift-код «ГолосЯки»
 1. Модификация `AudioCapture.swift`:
    * Передача файла горячих слов при вызове CLI.
    * Обработка токенов и таймстемпов.

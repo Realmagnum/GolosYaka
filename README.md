@@ -1,4 +1,4 @@
-# Golosok: Local Speech Recognition for macOS
+# GolosYaka: Local Speech Recognition for macOS
 
 > **Read this in another language: [Русский](README_RU.md)**
 
@@ -19,8 +19,9 @@ Instant text input via `⌥ + Space`, offline media transcription, and optional 
 
 ## What's new in DEV
 
+* **Renamed to GolosYaka.** The app, bundle id and data folder are now `GolosYaka`. Existing installs migrate automatically on first launch: history, audio, term dictionary, prompts, settings and Keychain secrets are moved from the previous `Golosok` locations.
 * **Long-audio transcription without dropped words.** Long recordings are split into overlapping chunks with adaptive silence-aware boundaries, so phrases at chunk edges are no longer cut in half.
-* **IT-term compensation.** A built-in dictionary restores distorted English technical terms (`Tailscale`, `OpenCode`, `Hindsight`, `Ollama`, `Vaultwarden`, …). Custom terms can be added, imported, exported, and edited.
+* **IT-term compensation.** A built-in dictionary restores distorted English technical terms (`Tailscale`, `OpenCode`, `Hindsight`, `Ollama`, `Vaultwarden`, …). Custom terms can be added, imported, exported, edited, and deleted right from the list; **Delete unselected** removes every term whose apply switch is off.
 * **AI auto-learning with a review buffer.** New phonetic variants discovered by AI are staged as candidates. You can edit, approve, or reject each candidate; a batch AI validator can check the accumulated list.
 * **AI post-processing for notes and selections.** Summaries, meeting minutes, style polishing, translation, and custom prompts. Results stream in real time with reasoning controls.
 * **Selection transform hotkey.** Select text in any app and press `⌥ + ⇧ + Space` to run an AI action on just that fragment.
@@ -55,21 +56,21 @@ Instant text input via `⌥ + Space`, offline media transcription, and optional 
 
 ## Installation
 
-1. Download the latest `Golosok.dmg` from the [Releases](../../releases) section.
-2. Drag `Golosok.app` into your `/Applications` folder.
+1. Download the latest `GolosYaka.dmg` from the [Releases](../../releases) section.
+2. Drag `GolosYaka.app` into your `/Applications` folder.
 
 **Bypassing macOS Gatekeeper:**  
 This project is distributed as open-source software without an annual paid Apple Developer ID certificate. To prevent macOS from blocking the first launch, remove the quarantine attribute via Terminal:
 
 ```bash
-xattr -cr /Applications/Golosok.app
+xattr -cr /Applications/GolosYaka.app
 ```
 
 *(GUI alternative: Control + right-click the app icon → Open → Confirm; or System Settings → Privacy & Security → Open Anyway. The same instructions ship inside the DMG as `INSTALL.txt`.)*
 
 The build is **ad-hoc signed**: Gatekeeper warnings are expected, notarization is impossible
 without a Developer ID, and the code signature changes on every release. Because macOS ties
-the Accessibility permission to that signature, macOS may ask you to re-add Golosok in
+the Accessibility permission to that signature, macOS may ask you to re-add GolosYaka in
 System Settings → Privacy & Security → Accessibility after an update.
 
 ## System Permissions
@@ -78,11 +79,11 @@ On the first launch, the app requests two macOS permissions:
 1. **Microphone** — for capturing voice input.
 2. **Accessibility** — for automated text insertion (`Cmd + V`) directly at your active cursor and for the selection transform hotkey.
 
-*(If you are updating from an older version and the Accessibility toggle seems frozen, remove Golosok from the system list using the `-` button and re-add it).*
+*(If you are updating from an older version and the Accessibility toggle seems frozen, remove GolosYaka from the system list using the `-` button and re-add it).*
 
 ## Controls & Shortcuts
 
-Golosok runs silently in the background. Control is bound to global hotkeys:
+GolosYaka runs silently in the background. Control is bound to global hotkeys:
 
 * **`⌥ + Space` (Option + Space) — Start / Stop Dictation**
   * **1st press:** starts recording (white island UI with a green equalizer).
@@ -98,7 +99,7 @@ The menu bar icon (`waveform`) provides access to recent dictation history, one-
 
 ## AI Providers
 
-Golosok ships with presets for OpenAI, DeepSeek, Groq, Neuraldeep, and local servers (Ollama / LM Studio), plus arbitrary OpenAI-compatible endpoints. Provider settings are stored independently, so switching the inspected provider never overwrites another provider's model or key.
+GolosYaka ships with presets for OpenAI, DeepSeek, Groq, Neuraldeep, and local servers (Ollama / LM Studio), plus arbitrary OpenAI-compatible endpoints. Provider settings are stored independently, so switching the inspected provider never overwrites another provider's model or key.
 
 Primary and Failover roles are explicit:
 
@@ -106,7 +107,7 @@ Primary and Failover roles are explicit:
 * Use the **Primary** toggle to make it the active provider.
 * Use the **Failover** toggle to make it the automatic backup.
 
-Bring your own API key or point Golosok at a local model — no sign-up needed.
+Bring your own API key or point GolosYaka at a local model — no sign-up needed.
 
 ## Building from Source
 
@@ -115,13 +116,13 @@ If you want to clone the repository and build the Xcode project manually:
 ```bash
 # 1. Clone the repository
 git clone https://github.com/Realmagnum/Golosok.git
-cd Golosok
+cd GolosYaka
 
 # 2. Download GigaAM model weights
-curl -L -o Golosok/gigaam.gguf https://huggingface.co/memoravox/gigaam-v3-e2e-rnnt-gguf/resolve/main/gigaam-v3-e2e-rnnt-Q8_0.gguf
+curl -L -o GolosYaka/gigaam.gguf https://huggingface.co/memoravox/gigaam-v3-e2e-rnnt-gguf/resolve/main/gigaam-v3-e2e-rnnt-Q8_0.gguf
 
 # 3. Open the project in Xcode
-open Golosok.xcodeproj
+open GolosYaka.xcodeproj
 ```
 
 In Xcode, press `⌘ + R` to build and run.
@@ -132,19 +133,19 @@ Command Line Tools are enough — both scripts compile with `swiftc`, copy the r
 resources into the bundle as real files, generate localizations from the String Catalog
 and produce a versioned `Info.plist`.
 
-Runtime resources are not stored in git. Point `GOLOSOK_RESOURCES_DIR` at a directory that
+Runtime resources are not stored in git. Point `GOLOSYAKA_RESOURCES_DIR` at a directory that
 contains `ffmpeg`, `whisper-cli`, `transcribe-cli`, `gigaam.gguf`, `AppIcon.icns` and
-`Assets.car` (by default it reads them from an installed `/Applications/Golosok.app`).
+`Assets.car` (by default it reads them from an installed `/Applications/GolosYaka.app`).
 
 ```bash
-# Dev bundle: universal binary, ad-hoc signed, ../Golosok-Build/Golosok-Dev.app
+# Dev bundle: universal binary, ad-hoc signed, ../GolosYaka-Build/GolosYaka-Dev.app
 ./build-dev.sh
 ./build-dev.sh --arch arm64            # faster, single architecture
 
 # Release: universal .app + DMG, Developer ID signing, optional notarization
-GOLOSOK_RESOURCES_DIR=/Applications/Golosok.app/Contents/Resources \
+GOLOSYAKA_RESOURCES_DIR=/Applications/GolosYaka.app/Contents/Resources \
   ./build-release.sh --identity "Developer ID Application: Name (TEAMID)" \
-                     --notary-profile golosok
+                     --notary-profile golosyaka
 ```
 
 The version comes from the `VERSION` file; `scripts/verify_project_invariants.py`
@@ -164,5 +165,5 @@ bundle.
 If the DMG is signed ad-hoc (no Developer ID certificate), macOS blocks it on first launch:
 
 ```bash
-xattr -cr /Applications/Golosok.app
+xattr -cr /Applications/GolosYaka.app
 ```

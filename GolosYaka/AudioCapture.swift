@@ -857,22 +857,18 @@ class AudioCapture: NSObject, ObservableObject, AVAudioRecorderDelegate {
     
     private func saveAudioForNote(id: UUID, sourceURL: URL) {
         let fm = FileManager.default
-        guard let appSupport = fm.urls(for: .applicationSupportDirectory, in: .userDomainMask).first else { return }
-        let audioDir = appSupport.appendingPathComponent("Golosok/Audio", isDirectory: true)
-        try? fm.createDirectory(at: audioDir, withIntermediateDirectories: true)
+        guard let audioDir = AppPaths.audioDirectory else { return }
         let destURL = audioDir.appendingPathComponent("\(id.uuidString).wav")
         if fm.fileExists(atPath: destURL.path) { try? fm.removeItem(at: destURL) }
         try? fm.copyItem(at: sourceURL, to: destURL)
     }
     
     private func audioFileURL(for id: UUID) -> URL? {
-        guard let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first else { return nil }
-        return appSupport.appendingPathComponent("Golosok/Audio/\(id.uuidString).wav")
+        AppPaths.audioDirectory?.appendingPathComponent("\(id.uuidString).wav")
     }
     
     private func timingsFileURL(for id: UUID) -> URL? {
-        guard let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first else { return nil }
-        return appSupport.appendingPathComponent("Golosok/Audio/\(id.uuidString).segments.json")
+        AppPaths.audioDirectory?.appendingPathComponent("\(id.uuidString).segments.json")
     }
     
     private func saveTimingsForNote(id: UUID, words: [TimedWord], duration: Double) {
@@ -1146,14 +1142,12 @@ class AudioCapture: NSObject, ObservableObject, AVAudioRecorderDelegate {
     }
     
     func hasAudioFile(for item: TranscriptionItem) -> Bool {
-        guard let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first else { return false }
-        let fileURL = appSupport.appendingPathComponent("Golosok/Audio/\(item.id.uuidString).wav")
+        guard let fileURL = audioFileURL(for: item.id) else { return false }
         return FileManager.default.fileExists(atPath: fileURL.path)
     }
     
     func toggleAudioPlayback(for item: TranscriptionItem) {
-        guard let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first else { return }
-        let fileURL = appSupport.appendingPathComponent("Golosok/Audio/\(item.id.uuidString).wav")
+        guard let fileURL = audioFileURL(for: item.id) else { return }
         if playingItemId == item.id { audioPlayer?.stop(); playingItemId = nil; isPlayerPlaying = false; return }
         do { audioPlayer = try AVAudioPlayer(contentsOf: fileURL); audioPlayer?.play(); playingItemId = item.id; isPlayerPlaying = true } catch {}
     }
@@ -1820,8 +1814,8 @@ class AudioCapture: NSObject, ObservableObject, AVAudioRecorderDelegate {
             var content = ""
             let prettyText = TextFormatter.formatIntoParagraphs(item.text)
             switch format.lowercased() {
-            case "md": content = "# Транскрипция Голосок\n**Дата:** \(item.date)\n**Длительность:** \(item.duration)\n\n---\n\n\(prettyText)"
-            case "txt": content = "Голосок — Транскрипция\nДата: \(item.date)\nДлительность: \(item.duration)\n\n\(prettyText)"
+            case "md": content = "# Транскрипция — ГолосЯка\n**Дата:** \(item.date)\n**Длительность:** \(item.duration)\n\n---\n\n\(prettyText)"
+            case "txt": content = "ГолосЯка — Транскрипция\nДата: \(item.date)\nДлительность: \(item.duration)\n\n\(prettyText)"
             case "csv":
                 // \u{FEFF} — это BOM маркер для того, чтобы Excel открывал русский язык в идеальном UTF-8!
                 content = "\u{FEFF}\"Дата\",\"Длительность\",\"Текст\"\n\"\(item.date)\",\"\(item.duration)\",\"\(item.text.replacingOccurrences(of: "\"", with: "\"\""))\""
@@ -1929,7 +1923,7 @@ func checkUpdates(force: Bool = false) {
     func downloadAndInstallUpdate() {
         guard let updateUrl = updateInfo?.url else { return }
         DispatchQueue.main.async { self.isDownloadingUpdate = true; self.updateProgressStatus = .connecting }
-        let dest = FileManager.default.temporaryDirectory.appendingPathComponent("Golosok_Update.dmg")
+        let dest = FileManager.default.temporaryDirectory.appendingPathComponent("GolosYaka_Update.dmg")
         if FileManager.default.fileExists(atPath: dest.path) { try? FileManager.default.removeItem(at: dest) }
         let config = URLSessionConfiguration.default
         let session = URLSession(configuration: config, delegate: self, delegateQueue: nil)
@@ -1957,10 +1951,7 @@ func checkUpdates(force: Bool = false) {
         NotificationCenter.default.post(name: .historyDidClear, object: nil)
     }
     private func historyStoreURL() -> URL? {
-        guard let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first else { return nil }
-        let dir = appSupport.appendingPathComponent("Golosok", isDirectory: true)
-        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-        return dir.appendingPathComponent("history.json")
+        AppPaths.applicationSupportDirectory?.appendingPathComponent("history.json")
     }
     private func saveHistory() {
         guard let url = historyStoreURL(), let data = try? JSONEncoder().encode(history) else { return }
@@ -1983,8 +1974,7 @@ func checkUpdates(force: Bool = false) {
         isLoadingHistory = true
         defer { isLoadingHistory = false }
 
-        let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
-        let audioDir = appSupport?.appendingPathComponent("Golosok/Audio", isDirectory: true)
+        let audioDir = AppPaths.audioDirectory
 
         self.history = items.map { item in
             var updated = item
@@ -2021,10 +2011,10 @@ func checkUpdates(force: Bool = false) {
     }
 
     private func deleteAudioFile(for id: UUID) {
-        guard let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first else { return }
-        let fileURL = appSupport.appendingPathComponent("Golosok/Audio/\(id.uuidString).wav")
+        guard let audioDir = AppPaths.audioDirectory else { return }
+        let fileURL = audioDir.appendingPathComponent("\(id.uuidString).wav")
         if FileManager.default.fileExists(atPath: fileURL.path) { try? FileManager.default.removeItem(at: fileURL) }
-        let segURL = appSupport.appendingPathComponent("Golosok/Audio/\(id.uuidString).segments.json")
+        let segURL = audioDir.appendingPathComponent("\(id.uuidString).segments.json")
         if FileManager.default.fileExists(atPath: segURL.path) { try? FileManager.default.removeItem(at: segURL) }
     }
 }
@@ -2042,7 +2032,7 @@ extension AudioCapture: URLSessionDownloadDelegate {
         }
     }
     func urlSession(_ session: URLSession, downloadTask: URLSessionDownloadTask, didFinishDownloadingTo location: URL) {
-        let dest = FileManager.default.temporaryDirectory.appendingPathComponent("Golosok_Update.dmg")
+        let dest = FileManager.default.temporaryDirectory.appendingPathComponent("GolosYaka_Update.dmg")
         if FileManager.default.fileExists(atPath: dest.path) { try? FileManager.default.removeItem(at: dest) }
         do {
             try FileManager.default.moveItem(at: location, to: dest)

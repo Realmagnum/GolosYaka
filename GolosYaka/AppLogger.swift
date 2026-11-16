@@ -34,19 +34,12 @@ final class AppLogger: ObservableObject {
 
     private let maxInMemory = 500
     private let maxFileBytes = 2 * 1024 * 1024
-    private let ioQueue = DispatchQueue(label: "Golosok.AppLogger.io")
+    private let ioQueue = DispatchQueue(label: "GolosYaka.AppLogger.io")
     private let fileURL: URL?
     private var fileHandle: FileHandle?
 
     private init() {
-        let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
-        var url: URL?
-        if let base {
-            let dir = base.appendingPathComponent("Golosok/Logs", isDirectory: true)
-            try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-            url = dir.appendingPathComponent("app.log")
-        }
-        self.fileURL = url
+        self.fileURL = AppPaths.logsDirectory?.appendingPathComponent("app.log")
         loadTailFromFile()
     }
 

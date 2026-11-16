@@ -1,4 +1,4 @@
-# Release Checklist — Golosok
+# Release Checklist — GolosYaka
 
 Единый источник версии — файл `VERSION` (`1.14.0`). Из него берут версию
 `build-dev.sh`, `build-release.sh`, шаблон `Info.plist` и Xcode (`MARKETING_VERSION`).
@@ -9,7 +9,7 @@
 ```bash
 # bump: VERSION + pbxproj MARKETING_VERSION (оба — до одного значения)
 echo 1.14.0 > VERSION
-# в Golosok.xcodeproj/project.pbxproj: MARKETING_VERSION = 1.14.0;
+# в GolosYaka.xcodeproj/project.pbxproj: MARKETING_VERSION = 1.14.0;
 python3 scripts/verify_project_invariants.py
 ```
 
@@ -27,7 +27,7 @@ python3 scripts/verify_project_invariants.py
 Релиз обязан содержать **реальные файлы**, без симлинков на `/Applications`:
 
 ```bash
-GOLOSOK_RESOURCES_DIR=/Applications/Golosok.app/Contents/Resources \
+GOLOSYAKA_RESOURCES_DIR=/Applications/GolosYaka.app/Contents/Resources \
   ./build-release.sh --arch universal
 ```
 
@@ -47,14 +47,14 @@ GOLOSOK_RESOURCES_DIR=/Applications/Golosok.app/Contents/Resources \
 Скрипт:
 
 1. подписывает `ffmpeg`, `whisper-cli`, `transcribe-cli` (вложенные Mach-O);
-2. подписывает `.app` с `--options runtime` и `Golosok.entitlements`
+2. подписывает `.app` с `--options runtime` и `GolosYaka.entitlements`
    (`com.apple.security.device.audio-input`, network client, user-selected files);
 3. проверяет `codesign --verify --strict --deep`.
 
 Без сертификата скрипт делает ad-hoc подпись и печатает инструкцию для пользователей:
 
 ```
-xattr -cr /Applications/Golosok.app
+xattr -cr /Applications/GolosYaka.app
 ```
 
 Ad-hoc DMG нельзя нотаризовать — Gatekeeper покажет предупреждение.
@@ -87,14 +87,14 @@ Ad-hoc DMG нельзя нотаризовать — Gatekeeper покажет �
 
 ```bash
 # один раз, интерактивно (сертификат попадёт в login.keychain)
-openssl req -x509 -newkey rsa:2048 -keyout /tmp/golosok.key -out /tmp/golosok.crt -days 3650 -nodes \
-  -subj "/CN=Golosok Self-Signed/O=Realmagnum/C=RU" \
+openssl req -x509 -newkey rsa:2048 -keyout /tmp/golosyaka.key -out /tmp/golosyaka.crt -days 3650 -nodes \
+  -subj "/CN=GolosYaka Self-Signed/O=Realmagnum/C=RU" \
   -addext "keyUsage=critical,digitalSignature" \
   -addext "extendedKeyUsage=critical,codeSigning" \
   -addext "basicConstraints=critical,CA:false"
-openssl pkcs12 -export -inkey /tmp/golosok.key -in /tmp/golosok.crt -out /tmp/golosok.p12 -passout pass:golosok
-security import /tmp/golosok.p12 -k "$HOME/Library/Keychains/login.keychain-db" -P golosok -T /usr/bin/codesign
-# дальше: ./build-release.sh --identity "Golosok Self-Signed"
+openssl pkcs12 -export -inkey /tmp/golosyaka.key -in /tmp/golosyaka.crt -out /tmp/golosyaka.p12 -passout pass:golosyaka
+security import /tmp/golosyaka.p12 -k "$HOME/Library/Keychains/login.keychain-db" -P golosyaka -T /usr/bin/codesign
+# дальше: ./build-release.sh --identity "GolosYaka Self-Signed"
 ```
 
 Этот вариант не заменяет нотаризацию: предупреждение Gatekeeper остаётся, `spctl`
@@ -105,7 +105,7 @@ security import /tmp/golosok.p12 -k "$HOME/Library/Keychains/login.keychain-db" 
 Один раз сохранить креды:
 
 ```bash
-xcrun notarytool store-credentials golosok \
+xcrun notarytool store-credentials golosyaka \
   --apple-id "you@example.com" --team-id TEAMID --password "app-specific-password"
 ```
 
@@ -114,7 +114,7 @@ xcrun notarytool store-credentials golosok \
 ```bash
 ./build-release.sh \
   --identity "Developer ID Application: Name (TEAMID)" \
-  --notary-profile golosok
+  --notary-profile golosyaka
 ```
 
 Скрипт отправит DMG в notarytool, дождётся результата и сделает `stapler staple`.
@@ -123,19 +123,24 @@ xcrun notarytool store-credentials golosok \
 ## 6. Артефакты
 
 ```
-dist/Golosok-1.14.0.dmg
-dist/Golosok-1.14.0.dmg.sha256
+dist/GolosYaka-1.14.0.dmg
+dist/GolosYaka-1.14.0.dmg.sha256
 ```
 
 Проверка на чистой машине:
 
 ```bash
-codesign --verify --strict --deep /Applications/Golosok.app
-spctl --assess --type execute --verbose=4 /Applications/Golosok.app
+codesign --verify --strict --deep /Applications/GolosYaka.app
+spctl --assess --type execute --verbose=4 /Applications/GolosYaka.app
 ```
 
 ## 7. Что публикуется вместе с релизом
 
+* Это первый релиз под новым bundle id `com.realmagnum.GolosYaka` и брендом «ГолосЯка».
+  У пользователей предыдущих сборок (`kozak-developer.Golosok`) при первом запуске
+  однократно переносятся Application Support, настройки и пакет секретов Keychain
+  (`LegacyMigration`); разрешения macOS (микрофон, Универсальный доступ) придётся выдать
+  заново, потому что они привязаны к bundle id.
 * `THIRD-PARTY-NOTICES.md` — копируется внутрь бандла (`Contents/Resources`).
 * `LICENSE.md` — копируется внутрь бандла.
 * Апдейтер приложения смотрит только на `Realmagnum/Golosok` и принимает только

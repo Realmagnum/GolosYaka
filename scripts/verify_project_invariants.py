@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Golosok Project Invariant Verifier (Architecture & Localization Gate)
+GolosYaka Project Invariant Verifier (Architecture & Localization Gate)
 Runs before build. Fails the build if:
 1. Localizable.xcstrings has keys missing 'en' or 'ru' translations.
 2. Swift UI code contains raw, unlocalized Cyrillic strings in UI views.
@@ -15,8 +15,8 @@ import os
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-XCSTRINGS_PATH = REPO_ROOT / "Golosok" / "Localizable.xcstrings"
-SWIFT_DIR = REPO_ROOT / "Golosok"
+XCSTRINGS_PATH = REPO_ROOT / "GolosYaka" / "Localizable.xcstrings"
+SWIFT_DIR = REPO_ROOT / "GolosYaka"
 
 def check_localization_integrity():
     errors = []
@@ -112,7 +112,7 @@ def check_version_consistency():
     if not re.fullmatch(r"\d+\.\d+\.\d+", version):
         errors.append(f"VERSION содержит невалидную версию: {version!r}")
 
-    pbxproj = REPO_ROOT / "Golosok.xcodeproj" / "project.pbxproj"
+    pbxproj = REPO_ROOT / "GolosYaka.xcodeproj" / "project.pbxproj"
     if pbxproj.exists():
         marketing = re.findall(r"MARKETING_VERSION = ([^;]+);", pbxproj.read_text(encoding="utf-8"))
         versions = {value.strip().strip('"') for value in marketing}
