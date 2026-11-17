@@ -2,22 +2,68 @@ import SwiftUI
 import AppKit
 
 class AppDelegate: NSObject, NSApplicationDelegate {
+    private var revealAttempts = 0
+
     /// Поднимает окно поверх всех приложений.
     ///
-    /// macOS 14+ не отдаёт активацию фоновому приложению по одному
-    /// `activate(ignoringOtherApps:)`, а `makeKeyAndOrderFront` уважает это
-    /// решение и оставляет окно за активным приложением. Поэтому сначала
-    /// просим активацию, затем поднимаем окно `orderFrontRegardless()` —
-    /// он ставит окно наверх независимо от того, активны мы или нет.
-    func activateMainWindow() {
+    /// macOS 14+ не отдаёт фоновому приложению активацию одним вызовом, а
+    /// `makeKeyAndOrderFront` уважает это решение. Поэтому: снимаем hide, просим
+    /// активацию, поднимаем окно главной сцены `orderFrontRegardless()` и повторяем
+    /// до ~1.2 с — окно создаётся через несколько циклов run loop после клика.
+    /// Если активацию так и не дали, посылаем reopen — то же событие, что при
+    /// клике по иконке в Dock, и оно гарантированно выводит окно вперёд.
+    @objc func activateMainWindow() {
+        revealAttempts = 0
+        revealStep()
+    }
+
+    private func revealStep() {
+        revealAttempts += 1
+
         NSApp.setActivationPolicy(.regular)
+        NSApp.unhide(nil)
         NSApp.activate(ignoringOtherApps: true)
         NSRunningApplication.current.activate(options: [.activateAllWindows])
 
-        guard let window = NSApp.windows.first(where: { $0.canBecomeMain && !($0 is NSPanel) }) else { return }
-        if window.isMiniaturized { window.deminiaturize(nil) }
-        window.orderFrontRegardless()
-        window.makeKey()
+        if let window = MainWindowRegistry.shared.window ?? fallbackWindow() {
+            if window.isMiniaturized { window.deminiaturize(nil) }
+            window.orderFrontRegardless()
+            if !window.isKeyWindow { window.makeKey() }
+        }
+
+        let isReady = NSApp.isActive && (MainWindowRegistry.shared.window?.isKeyWindow ?? false)
+        if isReady {
+            revealAttempts = 0
+            return
+        }
+
+        guard revealAttempts < 15 else {
+            revealAttempts = 0
+            requestReopen()
+            return
+        }
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) { [weak self] in
+            self?.revealStep()
+        }
+    }
+
+    /// Reopen-событие через LaunchServices: ровно то, что делает клик по иконке в
+    /// Dock. Нужен как последний рубеж, когда система не отдала активацию.
+    private func requestReopen() {
+        let configuration = NSWorkspace.OpenConfiguration()
+        configuration.activates = true
+        NSWorkspace.shared.openApplication(at: Bundle.main.bundleURL, configuration: configuration) { _, error in
+            if let error {
+                AppLogger.shared.warn("App", "Не удалось вывести окно вперёд", details: error.localizedDescription)
+            }
+        }
+    }
+
+    /// Запасной поиск, если accessor ещё не зарегистрировал окно.
+    private func fallbackWindow() -> NSWindow? {
+        let candidates = NSApp.windows.filter { $0.canBecomeMain && !($0 is NSPanel) }
+        return candidates.first(where: { $0.isVisible }) ?? candidates.first
     }
 
     /// Клик по иконке в Dock, повторный `open` и reopen-событие.
@@ -81,9 +127,9 @@ struct GolosYakaApp: App {
     }
     
     var body: some Scene {
-        // Явный id нужен, чтобы «Развернуть ГолосЯку» мог создать окно заново,
-        // если пользователь закрыл его крестиком и остался только пункт в статус-баре.
-        WindowGroup(id: "main") {
+        // `Window` (а не WindowGroup) — ровно одно главное окно: openWindow не
+        // плодит копии, а закрытое крестиком окно создаёт заново.
+        Window(L10n.tr("ГолосЯка"), id: "main") {
             ContentView()
                 .withAppLocale()
                 .frame(minWidth: 990, minHeight: 710)

@@ -798,6 +798,9 @@ struct ContentView: View {
                 .transition(.opacity).onAppear { permissions.checkPermissions() }
             }
         }
+        // Запоминаем конкретное окно главной сцены: в `NSApp.windows` рядом живут
+        // панель статус-бара и служебные окна, и поднимать нужно именно это.
+        .background(WindowAccessor())
         // Автоматическое открытие заметки
         .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("AutoSelectNote"))) { notification in
             if audioCapture.autoOpenNoteEnabled, let newId = notification.object as? UUID {
@@ -2023,5 +2026,26 @@ struct FileDropOverlay: View {
             )
         }
         .ignoresSafeArea()
+    }
+}
+// MARK: - Доступ к окну главной сцены
+
+/// Слабая ссылка на `NSWindow`, в котором живёт ContentView.
+final class MainWindowRegistry {
+    static let shared = MainWindowRegistry()
+    weak var window: NSWindow?
+    private init() {}
+}
+
+/// Регистрирует окно хозяина в `MainWindowRegistry`, как только оно появилось.
+struct WindowAccessor: NSViewRepresentable {
+    func makeNSView(context: Context) -> NSView {
+        let view = NSView(frame: .zero)
+        DispatchQueue.main.async { MainWindowRegistry.shared.window = view.window }
+        return view
+    }
+
+    func updateNSView(_ nsView: NSView, context: Context) {
+        DispatchQueue.main.async { MainWindowRegistry.shared.window = nsView.window }
     }
 }
