@@ -1008,9 +1008,6 @@ struct ContentView: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(PlainButtonStyle())
-        .onHover { inside in
-            if inside { NSCursor.pointingHand.push() } else { NSCursor.pop() }
-        }
         .help(LocalizedStringKey("О программе"))
         .padding(.horizontal, 16).padding(.top, 16)
     }

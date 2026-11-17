@@ -392,7 +392,7 @@ struct DashboardChartsSection: View, Equatable {
     }
     
     var body: some View {
-        LazyVStack(spacing: 16) {
+        VStack(spacing: 16) {
             // ПЕРЕКЛЮЧАТЕЛЬ ДИАПАЗОНА
             HStack(spacing: 12) {
                 Text("ДИАПАЗОН")
@@ -459,11 +459,15 @@ struct DashboardChartsSection: View, Equatable {
             ActivityChart(points: stats.activity, range: chartRange)
             
             // ГРАФИКИ (2 КОЛОНКИ)
-            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
-                TimeOfDayChart(stats: stats.timeOfDay, peak: stats.peakActivity)
-                TempoChart(points: stats.timeline)
-                WeekdayRhythmChart(days: stats.weekdayAggregate)
-                SizeDonutChart(buckets: stats.sizeHistogram)
+            VStack(spacing: 12) {
+                HStack(spacing: 12) {
+                    TimeOfDayChart(stats: stats.timeOfDay, peak: stats.peakActivity)
+                    TempoChart(points: stats.timeline)
+                }
+                HStack(spacing: 12) {
+                    WeekdayRhythmChart(days: stats.weekdayAggregate)
+                    SizeDonutChart(buckets: stats.sizeHistogram)
+                }
             }
             
             // ПОСЛЕДНИЕ ЗАМЕТКИ (полосы на всю ширину)
@@ -473,13 +477,17 @@ struct DashboardChartsSection: View, Equatable {
             LevelProgressChart(progress: stats.levelProgress)
             
             // МЕТРИКИ
-            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
-                StatCard(value: stats.aiPower, label: "МОЩНОСТЬ ИИ")
-                StatCard(value: "\(stats.totalNotes)", label: "ВСЕГО ЗАМЕТОК")
-                StatCard(value: stats.totalMinutes, label: "НАГОВОРИЛИ (МИН)")
-                StatCard(value: stats.a4Pages, label: "СТРАНИЦ А4")
-                StatCard(value: "\(stats.wpm)", label: "WPM (ТЕМП)")
-                StatCard(value: stats.peakActivity, label: "ПИК АКТИВНОСТИ", isLocalizedValue: true)
+            VStack(spacing: 12) {
+                HStack(spacing: 12) {
+                    StatCard(value: stats.aiPower, label: "МОЩНОСТЬ ИИ")
+                    StatCard(value: "\(stats.totalNotes)", label: "ВСЕГО ЗАМЕТОК")
+                    StatCard(value: stats.totalMinutes, label: "НАГОВОРИЛИ (МИН)")
+                }
+                HStack(spacing: 12) {
+                    StatCard(value: stats.a4Pages, label: "СТРАНИЦ А4")
+                    StatCard(value: "\(stats.wpm)", label: "WPM (ТЕМП)")
+                    StatCard(value: stats.peakActivity, label: "ПИК АКТИВНОСТИ", isLocalizedValue: true)
+                }
             }
         }
         .onAppear { revealed = true }
