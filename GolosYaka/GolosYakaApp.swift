@@ -2,62 +2,74 @@ import SwiftUI
 import AppKit
 
 class AppDelegate: NSObject, NSApplicationDelegate {
-    private var revealAttempts = 0
-
-    /// Поднимает окно поверх всех приложений.
+    /// Выводит главное окно на передний план.
     ///
-    /// macOS 14+ не отдаёт фоновому приложению активацию одним вызовом, а
-    /// `makeKeyAndOrderFront` уважает это решение. Поэтому: снимаем hide, просим
-    /// активацию, поднимаем окно главной сцены `orderFrontRegardless()` и повторяем
-    /// до ~1.2 с — окно создаётся через несколько циклов run loop после клика.
-    /// Если активацию так и не дали, посылаем reopen — то же событие, что при
-    /// клике по иконке в Dock, и оно гарантированно выводит окно вперёд.
+    /// Три механизма подряд, потому что macOS 14+ отдаёт активацию фоновому
+    /// приложению не всегда:
+    /// 1. напрямую активируем приложение и поднимаем окно;
+    /// 2. посылаем reopen через LaunchServices — ровно то событие, что приходит
+    ///    при клике по иконке в Dock (он в этом приложении работает);
+    /// 3. если активацию так и не выдали — на несколько секунд поднимаем окно
+    ///    уровнем `.floating`, чтобы оно было видно, и возвращаем `.normal`,
+    ///    как только приложение станет активным.
     @objc func activateMainWindow() {
-        revealAttempts = 0
-        revealStep()
-    }
-
-    private func revealStep() {
-        revealAttempts += 1
-
         NSApp.setActivationPolicy(.regular)
         NSApp.unhide(nil)
-        NSApp.activate(ignoringOtherApps: true)
-        NSRunningApplication.current.activate(options: [.activateAllWindows])
 
-        if let window = MainWindowRegistry.shared.window ?? fallbackWindow() {
+        let window = MainWindowRegistry.shared.window ?? fallbackWindow()
+        AppLogger.shared.info(
+            "App",
+            "Reveal",
+            details: "window=\(window != nil), visible=\(window?.isVisible ?? false), isActive=\(NSApp.isActive)"
+        )
+
+        if let window {
             if window.isMiniaturized { window.deminiaturize(nil) }
             window.orderFrontRegardless()
             if !window.isKeyWindow { window.makeKey() }
         }
 
-        let isReady = NSApp.isActive && (MainWindowRegistry.shared.window?.isKeyWindow ?? false)
-        if isReady {
-            revealAttempts = 0
-            return
-        }
+        NSApp.activate(ignoringOtherApps: true)
+        if #available(macOS 14.0, *) { NSApp.activate() }
+        NSRunningApplication.current.activate(options: [.activateAllWindows])
 
-        guard revealAttempts < 15 else {
-            revealAttempts = 0
-            requestReopen()
-            return
-        }
+        requestReopen()
 
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) { [weak self] in
-            self?.revealStep()
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.7) { [weak self] in
+            self?.raiseIfStillInactive()
         }
     }
 
-    /// Reopen-событие через LaunchServices: ровно то, что делает клик по иконке в
-    /// Dock. Нужен как последний рубеж, когда система не отдала активацию.
+    /// Reopen-событие через LaunchServices: то же, что посылает Dock.
     private func requestReopen() {
         let configuration = NSWorkspace.OpenConfiguration()
         configuration.activates = true
         NSWorkspace.shared.openApplication(at: Bundle.main.bundleURL, configuration: configuration) { _, error in
             if let error {
-                AppLogger.shared.warn("App", "Не удалось вывести окно вперёд", details: error.localizedDescription)
+                AppLogger.shared.warn("App", "Reveal: reopen не доставлен", details: error.localizedDescription)
             }
         }
+    }
+
+    /// Последний рубеж: активацию не дали, но окно должно быть видно.
+    private func raiseIfStillInactive() {
+        guard !NSApp.isActive,
+              let window = MainWindowRegistry.shared.window ?? fallbackWindow() else { return }
+        AppLogger.shared.warn("App", "Reveal: активация не выдана, поднимаю окно поверх", details: "")
+        window.level = .floating
+        window.orderFrontRegardless()
+
+        var observer: NSObjectProtocol?
+        let restore = {
+            window.level = .normal
+            if let observer { NotificationCenter.default.removeObserver(observer) }
+        }
+        observer = NotificationCenter.default.addObserver(
+            forName: NSApplication.didBecomeActiveNotification,
+            object: nil,
+            queue: .main
+        ) { _ in restore() }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 4) { restore() }
     }
 
     /// Запасной поиск, если accessor ещё не зарегистрировал окно.
@@ -202,19 +214,10 @@ private struct MenuBarMenu: View {
         }
 
         Button(L10n.tr("Развернуть ГолосЯку")) {
-            let delegate = NSApp.delegate as? AppDelegate
-            // Активация должна запрашиваться синхронно в обработчике клика:
-            // позже macOS уже не считает её инициированной пользователем.
-            delegate?.activateMainWindow()
+            // openWindow создаёт окно, если оно закрыто; reopen внутри
+            // activateMainWindow активирует приложение так же, как Dock.
             openWindow(id: "main")
-            // Окно создаётся следующим циклом run loop — поднимаем его, когда появится
-            // (плюс страховка на случай, если onAppear отработает раньше window server).
-            DispatchQueue.main.async {
-                delegate?.activateMainWindow()
-            }
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
-                delegate?.activateMainWindow()
-            }
+            (NSApp.delegate as? AppDelegate)?.activateMainWindow()
         }
 
         Divider()
