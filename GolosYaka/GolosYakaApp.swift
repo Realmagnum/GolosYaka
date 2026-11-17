@@ -2,16 +2,22 @@ import SwiftUI
 import AppKit
 
 class AppDelegate: NSObject, NSApplicationDelegate {
-    /// Поднимает уже существующее окно. macOS 14+ игнорирует
-    /// `activate(ignoringOtherApps:)` для фонового приложения, поэтому порядок
-    /// важен: политика → окно → активация.
+    /// Поднимает окно поверх всех приложений.
+    ///
+    /// macOS 14+ не отдаёт активацию фоновому приложению по одному
+    /// `activate(ignoringOtherApps:)`, а `makeKeyAndOrderFront` уважает это
+    /// решение и оставляет окно за активным приложением. Поэтому сначала
+    /// просим активацию, затем поднимаем окно `orderFrontRegardless()` —
+    /// он ставит окно наверх независимо от того, активны мы или нет.
     func activateMainWindow() {
         NSApp.setActivationPolicy(.regular)
-        guard let window = NSApp.windows.first(where: { $0.canBecomeMain && !($0 is NSPanel) }) else { return }
-        window.deminiaturize(nil)
-        window.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
         NSRunningApplication.current.activate(options: [.activateAllWindows])
+
+        guard let window = NSApp.windows.first(where: { $0.canBecomeMain && !($0 is NSPanel) }) else { return }
+        if window.isMiniaturized { window.deminiaturize(nil) }
+        window.orderFrontRegardless()
+        window.makeKey()
     }
 
     /// Клик по иконке в Dock, повторный `open` и reopen-событие.
@@ -150,11 +156,18 @@ private struct MenuBarMenu: View {
         }
 
         Button(L10n.tr("Развернуть ГолосЯку")) {
+            let delegate = NSApp.delegate as? AppDelegate
+            // Активация должна запрашиваться синхронно в обработчике клика:
+            // позже macOS уже не считает её инициированной пользователем.
+            delegate?.activateMainWindow()
             openWindow(id: "main")
-            // Окно создаётся асинхронно: активируем и сразу, и когда оно появится
-            // (см. onAppear у WindowGroup).
+            // Окно создаётся следующим циклом run loop — поднимаем его, когда появится
+            // (плюс страховка на случай, если onAppear отработает раньше window server).
             DispatchQueue.main.async {
-                (NSApp.delegate as? AppDelegate)?.activateMainWindow()
+                delegate?.activateMainWindow()
+            }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+                delegate?.activateMainWindow()
             }
         }
 
