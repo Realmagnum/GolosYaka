@@ -120,6 +120,29 @@ stage_bundle() {
     rsync -a --copy-links --exclude '*.lproj' --exclude '.DS_Store' --exclude 'README.md' \
         "$GOLOSYAKA_RESOURCES_SRC"/ "$resources"/
 
+    # Генерируем актуальную иконку AppIcon.icns и AppLogo.png из репозитория,
+    # чтобы не тянуть старую иконку из унаследованного Assets.car / AppIcon.icns.
+    local icon_src="$ROOT/GolosYaka/Assets.xcassets/AppIcon.appiconset/icon_idle.png"
+    if [[ -f "$icon_src" ]]; then
+        local iconset_tmp
+        iconset_tmp="$(mktemp -d)/AppIcon.iconset"
+        mkdir -p "$iconset_tmp"
+        sips -z 16 16     "$icon_src" --out "$iconset_tmp/icon_16x16.png"      >/dev/null
+        sips -z 32 32     "$icon_src" --out "$iconset_tmp/icon_16x16@2x.png"   >/dev/null
+        sips -z 32 32     "$icon_src" --out "$iconset_tmp/icon_32x32.png"      >/dev/null
+        sips -z 64 64     "$icon_src" --out "$iconset_tmp/icon_32x32@2x.png"   >/dev/null
+        sips -z 128 128   "$icon_src" --out "$iconset_tmp/icon_128x128.png"    >/dev/null
+        sips -z 256 256   "$icon_src" --out "$iconset_tmp/icon_128x128@2x.png" >/dev/null
+        sips -z 256 256   "$icon_src" --out "$iconset_tmp/icon_256x256.png"    >/dev/null
+        sips -z 512 512   "$icon_src" --out "$iconset_tmp/icon_256x256@2x.png" >/dev/null
+        sips -z 512 512   "$icon_src" --out "$iconset_tmp/icon_512x512.png"    >/dev/null
+        cp "$icon_src" "$iconset_tmp/icon_512x512@2x.png"
+        iconutil -c icns "$iconset_tmp" -o "$resources/AppIcon.icns"
+        rm -rf "$(dirname "$iconset_tmp")"
+        cp "$icon_src" "$resources/AppLogo.png"
+        rm -f "$resources/Assets.car"
+    fi
+
     python3 "$ROOT/scripts/generate_localizations.py" \
         --xcstrings "$ROOT/GolosYaka/Localizable.xcstrings" \
         --resources-dir "$resources"
