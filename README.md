@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="GolosYaka/Assets.xcassets/AppLogo.imageset/icon_idle.png" width="96" height="96" alt="GolosYaka Logo">
+  <img src="GolosYaka/Assets.xcassets/AppLogo.imageset/golosyaka-logo.png" width="108" height="108" alt="GolosYaka Logo">
 
   <h1>GolosYaka</h1>
 
