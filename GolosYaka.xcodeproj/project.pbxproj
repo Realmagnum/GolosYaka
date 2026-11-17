@@ -446,7 +446,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 13.0;
-				MARKETING_VERSION = 1.15.0;
+				MARKETING_VERSION = 1.20.0;
 				PRODUCT_BUNDLE_IDENTIFIER = "com.realmagnum.GolosYaka";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
@@ -474,7 +474,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 13.0;
-				MARKETING_VERSION = 1.15.0;
+				MARKETING_VERSION = 1.20.0;
 				PRODUCT_BUNDLE_IDENTIFIER = "com.realmagnum.GolosYaka";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
