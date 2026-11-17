@@ -992,7 +992,10 @@ struct ContentView: View {
     private var sidebarHeader: some View {
         Button(action: { showAboutSheet = true }) {
             HStack(spacing: 8) {
-                Image("AppLogo").resizable().aspectRatio(contentMode: .fit).frame(width: 22, height: 22).cornerRadius(4)
+                Image(nsImage: NSApp.applicationIconImage)
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+                    .frame(width: 28, height: 28)
                 VStack(alignment: .leading, spacing: -2) {
                     Text("ГолосЯка").font(UIStyleFont.display(size: 16, weight: .bold)).foregroundColor(.uiInk)
                     HStack(spacing: 4) {
@@ -1005,6 +1008,9 @@ struct ContentView: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(PlainButtonStyle())
+        .onHover { inside in
+            if inside { NSCursor.pointingHand.push() } else { NSCursor.pop() }
+        }
         .help(LocalizedStringKey("О программе"))
         .padding(.horizontal, 16).padding(.top, 16)
     }
@@ -1283,10 +1289,10 @@ struct ContentView: View {
                         VStack(spacing: 24) {
                             VStack(spacing: 6) {
                                 HStack(spacing: 8) {
-                                    Image("AppLogo")
+                                    Image(nsImage: NSApp.applicationIconImage)
                                         .resizable()
-                                        .frame(width: 26, height: 26)
-                                        .cornerRadius(6)
+                                        .aspectRatio(contentMode: .fit)
+                                        .frame(width: 28, height: 28)
                                     Text("ГолосЯка")
                                         .font(UIStyleFont.display(size: 20, weight: .bold))
                                         .foregroundColor(.uiInk)

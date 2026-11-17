@@ -37,7 +37,7 @@ BUILD_NUMBER="$(read_build_number)"
 BUILD_ROOT="${GOLOSYAKA_BUILD_ROOT:-$(dirname "$ROOT")/GolosYaka-Build}"
 APP_TARGET="$BUILD_ROOT/GolosYaka-Dev.app"
 
-print_banner "dev v${VERSION}-dev ($ARCHS)"
+print_banner "v${VERSION} ($ARCHS)"
 
 verify_invariants
 
@@ -45,8 +45,8 @@ WORK_DIR="$(mktemp -d)"
 trap 'rm -rf "$WORK_DIR"' EXIT
 compile_binary "$ARCHS" "$WORK_DIR/GolosYaka"
 
-stage_bundle "$APP_TARGET" "$WORK_DIR/GolosYaka" "${VERSION}-dev" "$BUILD_NUMBER"
+stage_bundle "$APP_TARGET" "$WORK_DIR/GolosYaka" "$VERSION" "$BUILD_NUMBER"
 sign_bundle "$APP_TARGET" "-"
 
-echo "==> Готово: $APP_TARGET (v${VERSION}-dev, build ${BUILD_NUMBER}, ${ARCHS})"
+echo "==> Готово: $APP_TARGET (v${VERSION}, build ${BUILD_NUMBER}, ${ARCHS})"
 echo "    Запуск: open \"$APP_TARGET\""

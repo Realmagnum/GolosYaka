@@ -123,17 +123,13 @@ struct SplashView: View {
                         .shadow(color: Color.black.opacity(0.2), radius: 10, x: 0, y: 5)
                         
                     } else {
-                        ZStack {
-                            RoundedRectangle(cornerRadius: 22, style: .continuous)
-                                .fill(Color.white)
-                                .frame(width: 80, height: 80)
-                                .shadow(color: Color.black.opacity(0.12), radius: 15, x: 0, y: 8)
-                                .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous).stroke(Color(hex: "#E5E5E5"), lineWidth: 1))
-                            
-                            Circle().fill(Color(hex: "#1E1E1E")).frame(width: 44, height: 44)
-                        }
-                        .rotation3DEffect(.degrees(dotRotation), axis: (x: 0, y: 1, z: 0))
-                        .transition(.scale.combined(with: .opacity))
+                        Image(nsImage: NSApp.applicationIconImage)
+                            .resizable()
+                            .aspectRatio(contentMode: .fit)
+                            .frame(width: 88, height: 88)
+                            .shadow(color: Color.black.opacity(0.25), radius: 15, x: 0, y: 8)
+                            .rotation3DEffect(.degrees(dotRotation), axis: (x: 0, y: 1, z: 0))
+                            .transition(.scale.combined(with: .opacity))
                     }
                 }
                 .frame(height: 120)
