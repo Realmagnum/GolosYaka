@@ -1139,7 +1139,8 @@ struct ContentView: View {
                             }
                             
                             let diff = diffRanges(for: selected)
-                            FlowLayout(spacing: 8) {
+                            HStack(alignment: .top, spacing: 8) {
+                              FlowLayout(spacing: 8) {
                                 if selected.isAITransform == true || selected.duration == "AI" {
                                     MetadataPill(icon: "sparkles", text: L10n.tr("History.AI"), color: Color(hex: "#A855F7"))
                                 } else {
@@ -1179,6 +1180,9 @@ struct ContentView: View {
                                         .foregroundColor(.blue).padding(.horizontal, 8).padding(.vertical, 4).background(Color.blue.opacity(0.12)).cornerRadius(6)
                                     }.buttonStyle(.plain)
                                 }
+                              }
+                              .frame(maxWidth: .infinity, alignment: .leading)
+
                                 if !isEditing && !isSearchBarVisible {
                                     Button(action: toggleSearchBar) {
                                         HStack(spacing: 5) {
@@ -1198,6 +1202,7 @@ struct ContentView: View {
                                         .contentShape(Rectangle())
                                     }
                                     .buttonStyle(.plain)
+                                    .fixedSize()
                                     .help(LocalizedStringKey("Поиск по стенограмме (⌘F)"))
                                 }
                             }
