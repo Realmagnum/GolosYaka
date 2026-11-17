@@ -1,169 +1,87 @@
-# GolosYaka: Local Speech Recognition for macOS
+<div align="center">
+  <img src="GolosYaka/Assets.xcassets/AppLogo.imageset/icon_idle.png" width="96" height="96" alt="GolosYaka Logo">
 
-> **Read this in another language: [Русский](README_RU.md)**
+  <h1>GolosYaka</h1>
 
-<p align="left">
-  <a href="https://github.com/jaywcjlove/awesome-swift-macos-apps">
-    <img src="https://img.shields.io/badge/Featured_in-Awesome_Swift_macOS_Apps-black?style=for-the-badge&logo=swift&logoColor=F05138" alt="Awesome Swift macOS Apps">
-  </a>
-  <a href="https://github.com/Realmagnum/Golosok/releases">
-    <img src="https://img.shields.io/github/v/release/Realmagnum/Golosok?style=for-the-badge&color=black&logo=apple" alt="Latest Release">
-  </a>
-  <a href="https://github.com/Realmagnum/Golosok/blob/main/LICENSE">
-    <img src="https://img.shields.io/badge/License-Open_Source-black?style=for-the-badge" alt="License">
-  </a>
-</p>
+  <p>
+    <strong>Native macOS voice dictation, offline media transcription & AI text processing on Apple Silicon</strong>
+  </p>
 
-**Native voice dictation powered by Sber GigaAM v3. Inference on Apple Silicon.**  
-Instant text input via `⌥ + Space`, offline media transcription, and optional AI post-processing with your own provider.
+  <p>
+    <strong>English</strong> · <a href="README_RU.md">Русский</a>
+    &nbsp;|&nbsp;
+    <a href="#highlights">Highlights</a> ·
+    <a href="#shortcuts">Shortcuts</a> ·
+    <a href="#installation">Installation</a> ·
+    <a href="#building-from-source">Build</a>
+  </p>
+</div>
 
-## What's new in DEV
+---
 
-* **Renamed to GolosYaka.** The app, bundle id and data folder are now `GolosYaka`. Existing installs migrate automatically on first launch: history, audio, term dictionary, prompts, settings and Keychain secrets are moved from the previous `Golosok` locations.
-* **Long-audio transcription without dropped words.** Long recordings are split into overlapping chunks with adaptive silence-aware boundaries, so phrases at chunk edges are no longer cut in half.
-* **IT-term compensation.** A built-in dictionary restores distorted English technical terms (`Tailscale`, `OpenCode`, `Hindsight`, `Ollama`, `Vaultwarden`, …). Custom terms can be added, imported, exported, edited, and deleted right from the list; **Delete unselected** removes every term whose apply switch is off.
-* **AI auto-learning with a review buffer.** New phonetic variants discovered by AI are staged as candidates. You can edit, approve, or reject each candidate; a batch AI validator can check the accumulated list.
-* **AI post-processing for notes and selections.** Summaries, meeting minutes, style polishing, translation, and custom prompts. Results stream in real time with reasoning controls.
-* **Selection transform hotkey.** Select text in any app and press `⌥ + ⇧ + Space` to run an AI action on just that fragment.
-* **Any OpenAI-compatible provider.** OpenAI, DeepSeek, Groq, Neuraldeep (OAuth), Ollama/LM Studio, or a custom endpoint. Each provider keeps its own Base URL, model, and API key.
-* **Manual Primary and Failover roles.** Browsing providers never changes the active one. Assign Primary or Failover explicitly; Failover automatically takes over on network errors, timeouts, 401/403/404/429, and 5xx responses.
-* **Retranscription and stage inspection.** Re-run a note and compare raw ASR, the text after the IT dictionary, and the final AI-edited result.
-* **Live bilingual UI.** Switch between Russian and English on the fly, including dates, relative times, and AI action names.
+GolosYaka turns speech into clean text right at your cursor (`⌥ + Space`), transcribes long audio and video files locally without cloud uploads, and optionally refines notes or selected text with your preferred LLM provider.
 
-## Features & Architecture
+## Highlights
 
-* **Full local transcription (Zero Cloud).** Speech inference runs 100% locally. The audio stream never leaves your Mac. AI post-processing is optional and only uses the provider you configure.
-* **Direct Input.** Press `⌥ + Space`, dictate, and the text is inserted at your cursor in any app: VS Code, Notion, Telegram, Xcode, Obsidian, Slack, and more.
-* **Hardware acceleration.** The model is optimized for Apple Silicon (M-series) and runs through CoreML / Apple Neural Engine without heating the CPU.
-* **Context and slang awareness.** Strong handling of Russian, English, IT slang, code-switching ("Runglish"), and automatic punctuation.
-* **Batch file processing.** Offline transcription of audio and video files of any length: MP3, WAV, M4A, MP4, WebM.
-* **Word-level timings.** Karaoke-style highlighting during playback, with timings kept in sync after retranscription and dictionary replacements.
-* **Prompt manager.** Edit built-in AI prompts, add custom ones, and roll back changes.
-* **History and analytics.** AI transforms are stored in history with before/after badges; the dashboard shows time saved, dictation speed, activity, and note-size charts.
-* **Bilingual by design.** Every UI string is available in both English and Russian.
-* **Secure credentials.** API keys are stored in the macOS Keychain, with per-provider isolation and a single cached access path.
+- **100% Local Speech Recognition** — Powered by **Sber GigaAM v3** and **Whisper Large v3 Turbo** on Apple Silicon (~70 MB idle RAM). Audio never leaves your Mac.
+- **Instant Direct Input** — Dictate into any app (Xcode, VS Code, Obsidian, Telegram, Slack, browsers) or use Push-to-Talk mode.
+- **IT-Term Dictionary & Auto-Learning** — Automatically restores phonetic technical terms and bilingual slang (`Tailscale`, `OpenCode`, `Ollama`, `Kubernetes`, etc.) with an AI candidate review buffer.
+- **Lossless Long-Audio Chunking** — Splits long recordings along adaptive silence boundaries so words at chunk edges are never dropped.
+- **Word-Level Karaoke & Stage Diff** — Follow word timings during playback and compare Raw ASR → IT Dictionary → Final AI output at any time.
+- **In-Place Selection AI (`⌥ + ⇧ + Space`)** — Select text in any app to summarize, rewrite, translate, or run custom prompts with real-time streaming.
+- **Bring Your Own AI (Primary + Failover)** — Connect OpenAI, DeepSeek, Groq, Neuraldeep, Ollama / LM Studio, or any OpenAI-compatible endpoint with automatic failover.
 
-## Technical Specifications
+## Shortcuts
 
-| Component | Specification |
+| Shortcut | Action |
 | :--- | :--- |
-| **OS** | macOS 13.0+ (Ventura, Sonoma, Sequoia) |
-| **Hardware** | Apple Silicon (M1 / M2 / M3 / M4 / M5) |
-| **Model Engine** | GigaAM v3 RNN-T (GGUF Q8_0) / Whisper Large v3 Turbo / custom remote ASR |
-| **RAM (Idle)** | ~70 MB |
-| **RAM (Active Inference)** | ~100 MB |
-| **Distribution Size** | ~270 MB |
+| `⌥ + Space` | Start / stop voice dictation (or hold in Push-to-Talk mode) |
+| `⌥ + ⇧ + Space` | Run an AI action on selected text in any application |
+| `Esc` | Cancel current recording without saving or pasting |
 
 ## Installation
 
-1. Download the latest `GolosYaka.dmg` from the [Releases](../../releases) section.
-2. Drag `GolosYaka.app` into your `/Applications` folder.
-
-**Bypassing macOS Gatekeeper:**  
-This project is distributed as open-source software without an annual paid Apple Developer ID certificate. To prevent macOS from blocking the first launch, remove the quarantine attribute via Terminal:
+1. Download the latest `GolosYaka.dmg` from [Releases](https://github.com/Realmagnum/GolosYaka/releases).
+2. Drag `GolosYaka.app` into `/Applications`.
+3. Clear the macOS quarantine flag before first launch (the app uses an open-source ad-hoc signature):
 
 ```bash
 xattr -cr /Applications/GolosYaka.app
 ```
 
-*(GUI alternative: Control + right-click the app icon → Open → Confirm; or System Settings → Privacy & Security → Open Anyway. The same instructions ship inside the DMG as `INSTALL.txt`.)*
+4. Grant **Microphone** (voice capture) and **Accessibility** (cursor paste & selection hotkey) permissions when prompted.
 
-The build is **ad-hoc signed**: Gatekeeper warnings are expected, notarization is impossible
-without a Developer ID, and the code signature changes on every release. Because macOS ties
-the Accessibility permission to that signature, macOS may ask you to re-add GolosYaka in
-System Settings → Privacy & Security → Accessibility after an update.
+> **Updating note:** Because ad-hoc signatures change between builds, macOS may ask to refresh Accessibility after an update. Remove GolosYaka with `-` in *System Settings → Privacy & Security → Accessibility* and add it again.
 
-## System Permissions
+## Specifications
 
-On the first launch, the app requests two macOS permissions:
-1. **Microphone** — for capturing voice input.
-2. **Accessibility** — for automated text insertion (`Cmd + V`) directly at your active cursor and for the selection transform hotkey.
-
-*(If you are updating from an older version and the Accessibility toggle seems frozen, remove GolosYaka from the system list using the `-` button and re-add it).*
-
-## Controls & Shortcuts
-
-GolosYaka runs silently in the background. Control is bound to global hotkeys:
-
-* **`⌥ + Space` (Option + Space) — Start / Stop Dictation**
-  * **1st press:** starts recording (white island UI with a green equalizer).
-  * **2nd press:** stops recording, runs inference (~0.1 s), and pastes the text into the focused input field.
-* **Push-to-Talk / Hold Mode** *(selectable in Settings)*
-  * Hold `⌥ + Space` to record, release to transcribe and paste instantly.
-* **`⌥ + ⇧ + Space` — AI Transform for Selected Text**
-  * Opens the prompt palette for the current selection in any app.
-* **`ESC` — Cancel**
-  * Hard-resets the current recording without pasting or saving.
-
-The menu bar icon (`waveform`) provides access to recent dictation history, one-click copying, and app settings.
-
-## AI Providers
-
-GolosYaka ships with presets for OpenAI, DeepSeek, Groq, Neuraldeep, and local servers (Ollama / LM Studio), plus arbitrary OpenAI-compatible endpoints. Provider settings are stored independently, so switching the inspected provider never overwrites another provider's model or key.
-
-Primary and Failover roles are explicit:
-
-* Open any provider to view or edit its settings.
-* Use the **Primary** toggle to make it the active provider.
-* Use the **Failover** toggle to make it the automatic backup.
-
-Bring your own API key or point GolosYaka at a local model — no sign-up needed.
+| Parameter | Value |
+| :--- | :--- |
+| **OS** | macOS 13.0+ (Ventura, Sonoma, Sequoia) |
+| **Hardware** | Apple Silicon (M1 – M5) |
+| **Speech Engines** | GigaAM v3 RNN-T (`GGUF Q8_0`), Whisper Large v3 Turbo, Custom Remote ASR |
+| **Memory Footprint** | ~70 MB idle / ~100 MB active inference |
+| **Interface Languages** | English & Russian (live switching) |
 
 ## Building from Source
 
-If you want to clone the repository and build the Xcode project manually:
-
 ```bash
-# 1. Clone the repository
-git clone https://github.com/Realmagnum/Golosok.git
+git clone https://github.com/Realmagnum/GolosYaka.git
 cd GolosYaka
 
-# 2. Download GigaAM model weights
-curl -L -o GolosYaka/gigaam.gguf https://huggingface.co/memoravox/gigaam-v3-e2e-rnnt-gguf/resolve/main/gigaam-v3-e2e-rnnt-Q8_0.gguf
+# Download GigaAM v3 weights
+curl -L -o GolosYaka/gigaam.gguf \
+  https://huggingface.co/memoravox/gigaam-v3-e2e-rnnt-gguf/resolve/main/gigaam-v3-e2e-rnnt-Q8_0.gguf
 
-# 3. Open the project in Xcode
+# Build & run via Xcode
 open GolosYaka.xcodeproj
 ```
 
-In Xcode, press `⌘ + R` to build and run.
-
-### Scripted builds (no full Xcode required)
-
-Command Line Tools are enough — both scripts compile with `swiftc`, copy the runtime
-resources into the bundle as real files, generate localizations from the String Catalog
-and produce a versioned `Info.plist`.
-
-Runtime resources are not stored in git. Point `GOLOSYAKA_RESOURCES_DIR` at a directory that
-contains `ffmpeg`, `whisper-cli`, `transcribe-cli`, `gigaam.gguf`, `AppIcon.icns` and
-`Assets.car` (by default it reads them from an installed `/Applications/GolosYaka.app`).
+### CLI Build & Verification (Command Line Tools)
 
 ```bash
-# Dev bundle: universal binary, ad-hoc signed, ../GolosYaka-Build/GolosYaka-Dev.app
-./build-dev.sh
-./build-dev.sh --arch arm64            # faster, single architecture
-
-# Release: universal .app + DMG, Developer ID signing, optional notarization
-GOLOSYAKA_RESOURCES_DIR=/Applications/GolosYaka.app/Contents/Resources \
-  ./build-release.sh --identity "Developer ID Application: Name (TEAMID)" \
-                     --notary-profile golosyaka
+./build-dev.sh --arch arm64   # Fast dev bundle (../GolosYaka-Build/GolosYaka-Dev.app)
+./scripts/run-tests.sh        # Smoke & invariant test suite
 ```
 
-The version comes from the `VERSION` file; `scripts/verify_project_invariants.py`
-fails the build if `VERSION`, `MARKETING_VERSION` and `Info.plist` disagree.
-
-Tests and the release checklist:
-
-```bash
-./scripts/run-tests.sh     # smoke suite locally, full test target when Xcode is present
-cat docs/RELEASE.md
-```
-
-Bundled third-party components (FFmpeg, whisper.cpp, transcribe.cpp, GigaAM weights) and
-their licenses are listed in `THIRD-PARTY-NOTICES.md`; every build copies it into the app
-bundle.
-
-If the DMG is signed ad-hoc (no Developer ID certificate), macOS blocks it on first launch:
-
-```bash
-xattr -cr /Applications/GolosYaka.app
-```
+See [`docs/RELEASE.md`](docs/RELEASE.md) for DMG packaging and [`THIRD-PARTY-NOTICES.md`](THIRD-PARTY-NOTICES.md) for bundled open-source licenses.

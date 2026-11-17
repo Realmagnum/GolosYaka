@@ -1853,7 +1853,7 @@ func checkUpdates(force: Bool = false) {
             }
             return
         }
-        guard let url = URL(string: "https://api.github.com/repos/Realmagnum/Golosok/releases/latest") else { return }
+        guard let url = URL(string: "https://api.github.com/repos/Realmagnum/GolosYaka/releases/latest") else { return }
         var request = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalAndRemoteCacheData, timeoutInterval: 10.0)
         request.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
         if let etag = UserDefaults.standard.string(forKey: "updateCheckETag") {

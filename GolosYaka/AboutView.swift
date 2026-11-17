@@ -96,13 +96,13 @@ struct AboutView: View {
             // 4. КНОПКИ
             HStack(spacing: 8) {
                 AboutLinkButton(title: "GitHub", icon: "terminal.fill") {
-                    openURL(URL(string: "https://github.com/Realmagnum/Golosok/")!)
+                    openURL(URL(string: "https://github.com/Realmagnum/GolosYaka/")!)
                 }
                 AboutLinkButton(title: "Поддержка", icon: "envelope") {
                     openURL(URL(string: "https://t.me/Realmagnum")!)
                 }
                 AboutLinkButton(title: "Релизы", icon: "doc.text") {
-                    openURL(URL(string: "https://github.com/Realmagnum/Golosok/releases")!)
+                    openURL(URL(string: "https://github.com/Realmagnum/GolosYaka/releases")!)
                 }
             }
             

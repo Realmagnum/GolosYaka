@@ -31,7 +31,7 @@ no GPL-only codecs. Its build configuration (as reported by `ffmpeg -version`) i
 Because the binary is statically linked against LGPL libraries, the corresponding source
 code is available from https://ffmpeg.org/download.html (release 7.1) and can be rebuilt
 with the configuration above. Written offer: open an issue at
-https://github.com/Realmagnum/Golosok/issues and the maintainers will provide the exact
+https://github.com/Realmagnum/GolosYaka/issues and the maintainers will provide the exact
 sources used for a given release.
 
 ## GigaAM v3 weights

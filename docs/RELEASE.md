@@ -143,6 +143,6 @@ spctl --assess --type execute --verbose=4 /Applications/GolosYaka.app
   заново, потому что они привязаны к bundle id.
 * `THIRD-PARTY-NOTICES.md` — копируется внутрь бандла (`Contents/Resources`).
 * `LICENSE.md` — копируется внутрь бандла.
-* Апдейтер приложения смотрит только на `Realmagnum/Golosok` и принимает только
+* Апдейтер приложения смотрит только на `Realmagnum/GolosYaka` и принимает только
   HTTPS-ассеты `github.com` / `objects.githubusercontent.com`
   (`AudioCapture.isTrustedReleaseAsset`), поэтому чужой DMG не подхватится.

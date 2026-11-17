@@ -168,7 +168,7 @@ r.expectEqual(AudioCapture.compareVersions("1.12.1", "1.12.1"), .orderedSame, "�
 r.expectEqual(AudioCapture.compareVersions("2.0", "1.99.9"), .orderedDescending, "Разная длина версий")
 
 // Доверие к источнику обновлений
-r.expect(AudioCapture.isTrustedReleaseAsset(URL(string: "https://github.com/Realmagnum/Golosok/releases/download/v1/dmg")!), "GitHub-ассет доверенный")
+r.expect(AudioCapture.isTrustedReleaseAsset(URL(string: "https://github.com/Realmagnum/GolosYaka/releases/download/v1/dmg")!), "GitHub-ассет доверенный")
 r.expect(AudioCapture.isTrustedReleaseAsset(URL(string: "https://objects.githubusercontent.com/file")!), "CDN GitHub доверенный")
 r.expect(!AudioCapture.isTrustedReleaseAsset(URL(string: "http://github.com/file")!), "HTTP не доверяем")
 r.expect(!AudioCapture.isTrustedReleaseAsset(URL(string: "https://evil.example.com/GolosYaka.dmg")!), "Чужой хост не доверяем")

@@ -125,7 +125,7 @@ GolosYaka — первое открытие / First launch
    After an update the ad-hoc signature changes, so macOS may ask for
    Accessibility again: remove GolosYaka with "-" and add it back.
 
-Подробности / Details: https://github.com/Realmagnum/Golosok
+Подробности / Details: https://github.com/Realmagnum/GolosYaka
 README_FIRST
 
 echo "==> Создание DMG: $DMG_PATH"
