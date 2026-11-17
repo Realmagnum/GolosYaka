@@ -1,101 +1,87 @@
-# Golosok: Local Speech Recognition for macOS
+<div align="center">
+  <img src="GolosYaka/Assets.xcassets/AppLogo.imageset/icon_idle.png" width="96" height="96" alt="GolosYaka Logo">
 
-> **Read this in another language: [Русский](README_RU.md)**
+  <h1>GolosYaka</h1>
 
-<p align="left">
-  <a href="https://github.com/jaywcjlove/awesome-swift-macos-apps">
-    <img src="https://img.shields.io/badge/Featured_in-Awesome_Swift_macOS_Apps-black?style=for-the-badge&logo=swift&logoColor=F05138" alt="Awesome Swift macOS Apps">
-  </a>
-  <a href="https://github.com/Berliner187/Golosok/releases">
-    <img src="https://img.shields.io/github/v/release/Berliner187/Golosok?style=for-the-badge&color=black&logo=apple" alt="Latest Release">
-  </a>
-  <a href="https://github.com/Berliner187/Golosok/blob/main/LICENSE">
-    <img src="https://img.shields.io/badge/License-Open_Source-black?style=for-the-badge" alt="License">
-  </a>
-</p>
+  <p>
+    <strong>Native macOS voice dictation, offline media transcription & AI text processing on Apple Silicon</strong>
+  </p>
 
-**Native voice dictation powered by Sber GigaAM v3. Inference on Apple Silicon.**  
-Instant text input via `⌥ + Space` and offline media file transcription.
-
-![Golosok Demo 1](https://raw.githubusercontent.com/Berliner187/Golosok/main/.github/assets/promo.gif)
-
-![Golosok Demo 2](https://raw.githubusercontent.com/Berliner187/Golosok/main/.github/assets/promo-2.gif)
-
-## 🌟 Recognition
-
-* **Featured in [Awesome Swift macOS Apps](https://github.com/jaywcjlove/awesome-swift-macos-apps)** — Official curated directory of elite native Swift applications for macOS by [@jaywcjlove](https://github.com/jaywcjlove).
+  <p>
+    <strong>English</strong> · <a href="README_RU.md">Русский</a>
+    &nbsp;|&nbsp;
+    <a href="#highlights">Highlights</a> ·
+    <a href="#shortcuts">Shortcuts</a> ·
+    <a href="#installation">Installation</a> ·
+    <a href="#building-from-source">Build</a>
+  </p>
+</div>
 
 ---
 
-## Features & Architecture
+GolosYaka turns speech into clean text right at your cursor (`⌥ + Space`), transcribes long audio and video files locally without cloud uploads, and optionally refines notes or selected text with your preferred LLM provider.
 
-* **Full Autonomy (Zero Cloud).** Inference runs 100% locally. Audio stream never leaves your Mac. Total privacy.
-* **Direct Input.** Press `⌥ + Space` — dictate — text drops instantly under your active cursor. Works in any app: VS Code, Notion, Telegram, Xcode, Obsidian, Slack, and more.
-* **Hardware Acceleration.** The model is optimized specifically for Apple Silicon (M-series). Execution is offloaded to CoreML / Apple Neural Engine (ANE) without CPU overheating.
-* **Context & Slang Awareness.** Excellent understanding of Russian, English, IT slang, code-switching ("Runglish"), and automatic punctuation placement.
-* **Batch File Processing.** Offline transcription for audio/video files of any duration (MP3, WAV, M4A, MP4, WebM).
+## Highlights
 
-## Technical Specifications
+- **100% Local Speech Recognition** — Powered by **Sber GigaAM v3** and **Whisper Large v3 Turbo** on Apple Silicon (~70 MB idle RAM). Audio never leaves your Mac.
+- **Instant Direct Input** — Dictate into any app (Xcode, VS Code, Obsidian, Telegram, Slack, browsers) or use Push-to-Talk mode.
+- **IT-Term Dictionary & Auto-Learning** — Automatically restores phonetic technical terms and bilingual slang (`Tailscale`, `OpenCode`, `Ollama`, `Kubernetes`, etc.) with an AI candidate review buffer.
+- **Lossless Long-Audio Chunking** — Splits long recordings along adaptive silence boundaries so words at chunk edges are never dropped.
+- **Word-Level Karaoke & Stage Diff** — Follow word timings during playback and compare Raw ASR → IT Dictionary → Final AI output at any time.
+- **In-Place Selection AI (`⌥ + ⇧ + Space`)** — Select text in any app to summarize, rewrite, translate, or run custom prompts with real-time streaming.
+- **Bring Your Own AI (Primary + Failover)** — Connect OpenAI, DeepSeek, Groq, Neuraldeep, Ollama / LM Studio, or any OpenAI-compatible endpoint with automatic failover.
 
-| Component | Specification |
+## Shortcuts
+
+| Shortcut | Action |
 | :--- | :--- |
-| **OS** | macOS 13.0+ (Ventura, Sonoma, Sequoia) |
-| **Hardware** | Apple Silicon (M1 / M2 / M3 / M4 / M5) |
-| **Model Engine** | GigaAM v3 RNN-T (GGUF Q8_0) / Whisper Large v3 |
-| **RAM (Idle)** | ~70 MB |
-| **RAM (Active Inference)** | ~100 MB |
-| **Distribution Size** | ~270 MB |
+| `⌥ + Space` | Start / stop voice dictation (or hold in Push-to-Talk mode) |
+| `⌥ + ⇧ + Space` | Run an AI action on selected text in any application |
+| `Esc` | Cancel current recording without saving or pasting |
 
 ## Installation
 
-1. Download the latest `Golosok.dmg` from the [Releases](../../releases) section.
-2. Drag `Golosok.app` into your `/Applications` folder.
-
-**Bypassing macOS Gatekeeper:**  
-This project is distributed as open-source software without an annual paid Apple Developer ID certificate. To prevent macOS from blocking the first launch, remove the quarantine attribute via Terminal:
+1. Download the latest `GolosYaka.dmg` from [Releases](https://github.com/Realmagnum/GolosYaka/releases).
+2. Drag `GolosYaka.app` into `/Applications`.
+3. Clear the macOS quarantine flag before first launch (the app uses an open-source ad-hoc signature):
 
 ```bash
-xattr -cr /Applications/Golosok.app
+xattr -cr /Applications/GolosYaka.app
 ```
 
-*(GUI Alternative: Control + Right-click on the app icon -> Open -> Confirm).*
+4. Grant **Microphone** (voice capture) and **Accessibility** (cursor paste & selection hotkey) permissions when prompted.
 
-## System Permissions
+> **Updating note:** Because ad-hoc signatures change between builds, macOS may ask to refresh Accessibility after an update. Remove GolosYaka with `-` in *System Settings → Privacy & Security → Accessibility* and add it again.
 
-On the first launch, the app will request two macOS permissions:
-1. **Microphone** — for capturing voice input.
-2. **Accessibility** — for automated text insertion (`Cmd + V`) directly under your active cursor.
+## Specifications
 
-*(If you are updating from an older version and the Accessibility toggle seems frozen — remove Golosok from the system list using the `-` button and re-add it).*
-
-## Controls & Shortcuts
-
-Golosok runs silently in the background. Control is bound to global hotkeys:
-
-* **`⌥ + Space` (Option + Space) — Start / Stop Dictation**
-  * **1st Press:** Activates recording (white island UI with green equalizer).
-  * **2nd Press:** Stops recording. Triggers inference (~0.1s) and pastes text into your focused input field.
-* **Push-to-Talk / Hold Mode** *(Selectable in Settings)*
-  * Hold `⌥ + Space` to record, release to instantly transcribe and paste.
-* **`ESC` — Cancel**
-  * Instant hard-reset of the current recording without pasting or saving.
-
-A menu bar icon (`waveform`) provides access to recent dictation history, one-click clipboard copying, and app settings.
+| Parameter | Value |
+| :--- | :--- |
+| **OS** | macOS 13.0+ (Ventura, Sonoma, Sequoia) |
+| **Hardware** | Apple Silicon (M1 – M5) |
+| **Speech Engines** | GigaAM v3 RNN-T (`GGUF Q8_0`), Whisper Large v3 Turbo, Custom Remote ASR |
+| **Memory Footprint** | ~70 MB idle / ~100 MB active inference |
+| **Interface Languages** | English & Russian (live switching) |
 
 ## Building from Source
 
-If you want to clone the repository and build the Xcode project manually:
-
 ```bash
-# 1. Clone the repository
-git clone https://github.com/Berliner187/Golosok.git
-cd Golosok
+git clone https://github.com/Realmagnum/GolosYaka.git
+cd GolosYaka
 
-# 2. Download GigaAM model weights
-curl -L -o Golosok/gigaam.gguf https://huggingface.co/memoravox/gigaam-v3-e2e-rnnt-gguf/resolve/main/gigaam-v3-e2e-rnnt-Q8_0.gguf
+# Download GigaAM v3 weights
+curl -L -o GolosYaka/gigaam.gguf \
+  https://huggingface.co/memoravox/gigaam-v3-e2e-rnnt-gguf/resolve/main/gigaam-v3-e2e-rnnt-Q8_0.gguf
 
-# 3. Open project in Xcode
-open Golosok.xcodeproj
+# Build & run via Xcode
+open GolosYaka.xcodeproj
 ```
 
-In Xcode, press `⌘ + R` to build and run.
+### CLI Build & Verification (Command Line Tools)
+
+```bash
+./build-dev.sh --arch arm64   # Fast dev bundle (../GolosYaka-Build/GolosYaka-Dev.app)
+./scripts/run-tests.sh        # Smoke & invariant test suite
+```
+
+See [`docs/RELEASE.md`](docs/RELEASE.md) for DMG packaging and [`THIRD-PARTY-NOTICES.md`](THIRD-PARTY-NOTICES.md) for bundled open-source licenses.

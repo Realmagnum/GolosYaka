@@ -1,0 +1,39 @@
+name: CI
+
+on:
+  push:
+    branches: [dev, main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  gate:
+    name: Invariants, localization, tests
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Architecture & localization gate
+        run: python3 scripts/verify_project_invariants.py
+
+      - name: Localization audit (report only)
+        run: python3 scripts/audit_localizations.py --quiet
+
+      - name: Smoke tests (no Xcode required)
+        run: GOLOSYAKA_TEST_MODE=smoke ./scripts/run-tests.sh
+
+      - name: Dev bundle builds, signs and carries no symlinks
+        run: |
+          mkdir -p "$RUNNER_TEMP/stub-resources"
+          printf 'stub' > "$RUNNER_TEMP/stub-resources/ffmpeg"
+          printf 'stub' > "$RUNNER_TEMP/stub-resources/THIRD-PARTY-NOTICES.md"
+          GOLOSYAKA_BUILD_ROOT="$RUNNER_TEMP/build" \
+          GOLOSYAKA_RESOURCES_DIR="$RUNNER_TEMP/stub-resources" \
+            ./build-dev.sh --arch "$(uname -m)"
+          codesign --verify --strict --deep "$RUNNER_TEMP/build/GolosYaka-Dev.app"
+          test -z "$(find "$RUNNER_TEMP/build/GolosYaka-Dev.app" -type l -print)"

@@ -1,0 +1,802 @@
+import SwiftUI
+import UniformTypeIdentifiers
+import AppKit
+
+// MARK: - Варианты сортировки словаря терминов
+
+enum TechTermSortOption: String, CaseIterable, Identifiable {
+    case orderAdded = "По порядку добавления"
+    case nameAsc = "По имени (A → Z)"
+    case nameDesc = "По имени (Z → A)"
+
+    var id: String { rawValue }
+
+    var iconName: String {
+        switch self {
+        case .orderAdded: return "clock"
+        case .nameAsc: return "arrow.up.circle"
+        case .nameDesc: return "arrow.down.circle"
+        }
+    }
+}
+
+// MARK: - Модальное окно управления словарем технических терминов
+
+struct TechTermManagerView: View {
+    @ObservedObject private var store = TechTermStore.shared
+    @ObservedObject private var language = LanguageSettings.shared
+    @Environment(\.dismiss) private var dismiss
+
+    @State private var searchText = ""
+    @State private var sortOption: TechTermSortOption = .orderAdded
+
+    @State private var editingRule: TechTermRule?
+    @State private var creatingRule = false
+    @State private var showingResetAlert = false
+    @State private var showingCandidatesSheet = false
+    @State private var importResultMessage: String?
+    @State private var showingImportAlert = false
+    @State private var ruleToDelete: TechTermRule?
+    @State private var showingDeleteDisabledAlert = false
+
+    private var allEnabled: Bool {
+        !store.rules.isEmpty && store.rules.allSatisfy { $0.isEnabled }
+    }
+
+    private var noneEnabled: Bool {
+        store.rules.allSatisfy { !$0.isEnabled }
+    }
+
+    /// Сколько правил удалит кнопка «Удалить невыбранное».
+    private var disabledCount: Int {
+        store.rules.filter { !$0.isEnabled }.count
+    }
+
+    /// Отфильтрованный и отсортированный список правил
+    private var displayedRules: [TechTermRule] {
+        var result = store.rules
+
+        // 1. Поиск по всем вхождениям (в каноническом имени и во всех паттернах)
+        let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        if !query.isEmpty {
+            result = result.filter { rule in
+                if rule.canonical.lowercased().contains(query) { return true }
+                for p in rule.patterns {
+                    if p.lowercased().contains(query) { return true }
+                }
+                return false
+            }
+        }
+
+        // 2. Сортировка: в порядке добавления (как есть) или по алфавиту A-Z / Z-A
+        switch sortOption {
+        case .orderAdded:
+            break
+        case .nameAsc:
+            result.sort { $0.canonical.localizedCaseInsensitiveCompare($1.canonical) == .orderedAscending }
+        case .nameDesc:
+            result.sort { $0.canonical.localizedCaseInsensitiveCompare($1.canonical) == .orderedDescending }
+        }
+
+        return result
+    }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            header
+            Divider().background(Color.uiHairline)
+            searchAndSortBar
+            Divider().background(Color.uiHairline)
+            actionToolbar
+            Divider().background(Color.uiHairline)
+            list
+            Divider().background(Color.uiHairline)
+            footer
+        }
+        .frame(minWidth: 560, idealWidth: 620, minHeight: 520, idealHeight: 640)
+        .background(Color.uiPaper)
+        .sheet(item: $editingRule) { rule in
+            TechTermEditorView(rule: rule).withAppLocale()
+        }
+        .sheet(isPresented: $creatingRule) {
+            TechTermEditorView(rule: nil).withAppLocale()
+        }
+        .sheet(isPresented: $showingCandidatesSheet) {
+            TechTermCandidatesView().withAppLocale()
+        }
+        .alert("Сбросить к базовому словарю?", isPresented: $showingResetAlert) {
+            Button("Отмена", role: .cancel) { }
+            Button("Сбросить", role: .destructive) {
+                store.resetToDefaults()
+            }
+        } message: {
+            Text("Все пользовательские термины будут заменены предустановленным набором IT-терминов.")
+        }
+        .alert("Импорт словаря", isPresented: $showingImportAlert) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text(importResultMessage ?? "")
+        }
+        .alert(
+            "Удалить термин?",
+            isPresented: Binding(
+                get: { ruleToDelete != nil },
+                set: { if !$0 { ruleToDelete = nil } }
+            ),
+            presenting: ruleToDelete
+        ) { rule in
+            Button("Отмена", role: .cancel) { ruleToDelete = nil }
+            Button("Удалить", role: .destructive) {
+                store.delete(id: rule.id)
+                ruleToDelete = nil
+            }
+        } message: { rule in
+            Text(L10n.format("Термин «%@» будет удалён без возможности восстановления.", rule.canonical))
+        }
+        .alert("Удалить невыбранные термины?", isPresented: $showingDeleteDisabledAlert) {
+            Button("Отмена", role: .cancel) { }
+            Button("Удалить", role: .destructive) {
+                store.deleteDisabled()
+            }
+        } message: {
+            Text(L10n.format("Будет удалено терминов: %lld. Действие необратимо.", Int64(disabledCount)))
+        }
+    }
+
+    // MARK: - Строка поиска и переключатель сортировки
+
+    private var searchAndSortBar: some View {
+        HStack(spacing: 12) {
+            // Поле поиска по всем вхождениям
+            HStack(spacing: 6) {
+                Image(systemName: "magnifyingglass")
+                    .foregroundColor(.uiMidGray)
+                    .font(.system(size: 12))
+
+                TextField("Поиск по всем терминам и вариантам...", text: $searchText)
+                    .textFieldStyle(.plain)
+                    .font(UIStyleFont.body(size: 12))
+
+                if !searchText.isEmpty {
+                    Button(action: { searchText = "" }) {
+                        Image(systemName: "xmark.circle.fill")
+                            .foregroundColor(.uiMidGray)
+                            .font(.system(size: 12))
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                }
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 6)
+            .background(Color.uiSidebar)
+            .cornerRadius(8)
+            .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.uiHairline, lineWidth: 1))
+
+            // Меню / селектор сортировки
+            Menu {
+                ForEach(TechTermSortOption.allCases) { opt in
+                    Button {
+                        sortOption = opt
+                    } label: {
+                        HStack {
+                            Text(LocalizedStringKey(opt.rawValue))
+                            if sortOption == opt {
+                                Image(systemName: "checkmark")
+                            }
+                        }
+                    }
+                }
+            } label: {
+                HStack(spacing: 5) {
+                    Image(systemName: "arrow.up.arrow.down")
+                        .font(.system(size: 11, weight: .medium))
+                    Text(LocalizedStringKey(sortOption.rawValue))
+                        .font(UIStyleFont.body(size: 11, weight: .medium))
+                        .lineLimit(1)
+                }
+                .foregroundColor(.uiInk)
+                .padding(.vertical, 6)
+                .padding(.horizontal, 10)
+                .background(Color.uiSidebar)
+                .cornerRadius(8)
+                .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.uiHairline, lineWidth: 1))
+            }
+            .menuStyle(BorderlessButtonMenuStyle())
+            .fixedSize()
+        }
+        .padding(.horizontal, 20)
+        .padding(.vertical, 8)
+        .background(Color.uiPaper)
+    }
+
+    private var actionToolbar: some View {
+        VStack(spacing: 10) {
+            // Верхняя строка: переключатели с комфортными отступами
+            HStack(spacing: 20) {
+                // Переключатель Выбрать все / Снять все
+                HStack(spacing: 8) {
+                    Toggle("", isOn: Binding(
+                        get: { allEnabled },
+                        set: { store.setAllEnabled($0) }
+                    ))
+                    .labelsHidden()
+                    .toggleStyle(SwitchToggleStyle(tint: Color(hex: "#10B981")))
+
+                    Text(allEnabled ? "Снять выделение со всех" : "Выбрать все")
+                        .font(UIStyleFont.body(size: 12, weight: .medium))
+                        .foregroundColor(.uiInk)
+                }
+
+                // Автообучение из ИИ
+                HStack(spacing: 8) {
+                    Toggle("", isOn: $store.isAutoLearnEnabled)
+                        .labelsHidden()
+                        .toggleStyle(SwitchToggleStyle(tint: Color(hex: "#10B981")))
+
+                    Text("Автообучение из ИИ")
+                        .font(UIStyleFont.body(size: 12, weight: .regular))
+                        .foregroundColor(.uiMidGray)
+                }
+
+                Spacer()
+
+                // Плашка кандидатов — справа, отдельно от переключателей
+                if !store.candidates.isEmpty {
+                    Button(action: { showingCandidatesSheet = true }) {
+                        HStack(spacing: 4) {
+                            Circle()
+                                .fill(Color.uiWarn)
+                                .frame(width: 5, height: 5)
+                            Text(L10n.format("%lld на проверке", Int64(store.candidates.count)))
+                                .font(UIStyleFont.body(size: 10, weight: .semibold))
+                                .foregroundColor(.uiWarn)
+                        }
+                        .padding(.vertical, 3)
+                        .padding(.horizontal, 7)
+                        .background(Color.uiWarn.opacity(0.12))
+                        .cornerRadius(8)
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                }
+            }
+
+            // Нижняя строка: счетчик и кнопки массового удаления / импорта / экспорта
+            HStack(spacing: 8) {
+                Text(L10n.format("Показано: %lld из %lld", Int64(displayedRules.count), Int64(store.rules.count)))
+                    .font(UIStyleFont.mono(size: 11))
+                    .foregroundColor(.uiMidGray)
+
+                Spacer()
+
+                // Кнопка удаления всех терминов со снятым переключателем применения
+                Button(action: { showingDeleteDisabledAlert = true }) {
+                    HStack(spacing: 4) {
+                        Image(systemName: "trash.slash")
+                            .font(.system(size: 11, weight: .medium))
+                        Text("Удалить невыбранное")
+                            .font(UIStyleFont.body(size: 12, weight: .medium))
+                    }
+                    .foregroundColor(disabledCount > 0 ? .uiInk : .uiMidGray.opacity(0.45))
+                    .padding(.vertical, 4)
+                    .padding(.horizontal, 10)
+                    .background(Color.uiSidebar)
+                    .cornerRadius(8)
+                    .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.uiHairline, lineWidth: 1))
+                }
+                .buttonStyle(PlainButtonStyle())
+                .disabled(disabledCount == 0)
+                .help("Удаляет все термины, у которых снят переключатель применения")
+
+                // Кнопка Импорт
+                Button(action: importDictionary) {
+                    HStack(spacing: 4) {
+                        Image(systemName: "square.and.arrow.down")
+                            .font(.system(size: 11, weight: .medium))
+                        Text("Импорт")
+                            .font(UIStyleFont.body(size: 12, weight: .medium))
+                    }
+                    .foregroundColor(.uiInk)
+                    .padding(.vertical, 4)
+                    .padding(.horizontal, 10)
+                    .background(Color.uiSidebar)
+                    .cornerRadius(8)
+                    .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.uiHairline, lineWidth: 1))
+                }
+                .buttonStyle(PlainButtonStyle())
+
+                // Кнопка Экспорт
+                Button(action: exportDictionary) {
+                    HStack(spacing: 4) {
+                        Image(systemName: "square.and.arrow.up")
+                            .font(.system(size: 11, weight: .medium))
+                        Text("Экспорт")
+                            .font(UIStyleFont.body(size: 12, weight: .medium))
+                    }
+                    .foregroundColor(.uiInk)
+                    .padding(.vertical, 4)
+                    .padding(.horizontal, 10)
+                    .background(Color.uiSidebar)
+                    .cornerRadius(8)
+                    .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.uiHairline, lineWidth: 1))
+                }
+                .buttonStyle(PlainButtonStyle())
+            }
+        }
+        .padding(.horizontal, 20)
+        .padding(.vertical, 10)
+        .background(Color.uiSidebar.opacity(0.4))
+    }
+
+    private var header: some View {
+        HStack {
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Словарь IT-терминов и автозамена")
+                    .font(UIStyleFont.display(size: 15, weight: .bold))
+                    .foregroundColor(.uiInk)
+                Text("Автоматическая компенсация ошибок распознавания английских терминов")
+                    .font(UIStyleFont.body(size: 11, weight: .regular))
+                    .foregroundColor(.uiMidGray)
+            }
+            Spacer()
+            Button(action: { dismiss() }) {
+                Image(systemName: "xmark")
+                    .font(.system(size: 11, weight: .bold))
+                    .foregroundColor(.uiMidGray)
+                    .frame(width: 28, height: 28)
+                    .background(Color.uiSidebar)
+                    .clipShape(Circle())
+                    .overlay(Circle().stroke(Color.uiHairline, lineWidth: 1))
+            }
+            .buttonStyle(TactileButtonStyle())
+        }
+        .padding(20)
+        .padding(.bottom, 4)
+    }
+
+    private var list: some View {
+        List {
+            if displayedRules.isEmpty {
+                VStack(spacing: 8) {
+                    Image(systemName: "magnifyingglass")
+                        .font(.system(size: 24))
+                        .foregroundColor(.uiMidGray.opacity(0.6))
+                    Text(searchText.isEmpty ? "Словарь пуст" : "Ничего не найдено по запросу «\(searchText)»")
+                        .font(UIStyleFont.body(size: 13, weight: .medium))
+                        .foregroundColor(.uiMidGray)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 40)
+            } else {
+                ForEach(displayedRules) { rule in
+                    row(rule)
+                        .contextMenu {
+                            Button {
+                                editingRule = rule
+                            } label: {
+                                Label("Редактировать", systemImage: "pencil")
+                            }
+                            Button(role: .destructive) {
+                                ruleToDelete = rule
+                            } label: {
+                                Label("Удалить", systemImage: "trash")
+                            }
+                        }
+                }
+            }
+        }
+        .listStyle(.inset)
+        .scrollContentBackground(.hidden)
+    }
+
+    private func row(_ rule: TechTermRule) -> some View {
+        HStack(spacing: 14) {
+            Toggle("", isOn: Binding(
+                get: { rule.isEnabled },
+                set: { _ in store.toggle(id: rule.id) }
+            ))
+            .labelsHidden()
+            .toggleStyle(SwitchToggleStyle(tint: Color(hex: "#10B981")))
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(rule.canonical)
+                    .font(UIStyleFont.body(size: 13, weight: .semibold))
+                    .foregroundColor(rule.isEnabled ? .uiInk : .uiMidGray)
+
+                Text(rule.patterns.joined(separator: ", "))
+                    .font(UIStyleFont.mono(size: 11))
+                    .foregroundColor(.uiMidGray)
+                    .lineLimit(1)
+            }
+
+            Spacer()
+
+            Button(action: { editingRule = rule }) {
+                Image(systemName: "pencil")
+                    .font(.system(size: 15, weight: .medium))
+                    .foregroundColor(.uiMidGray)
+                    .frame(width: 28, height: 28)
+            }
+            .buttonStyle(PlainButtonStyle())
+            .help("Редактировать термин")
+
+            Button(action: { ruleToDelete = rule }) {
+                Image(systemName: "trash")
+                    .font(.system(size: 14))
+                    .foregroundColor(.uiMidGray)
+                    .frame(width: 28, height: 28)
+            }
+            .buttonStyle(PlainButtonStyle())
+            .help("Удалить термин")
+        }
+        .padding(.vertical, 4)
+    }
+
+    private var footer: some View {
+        HStack {
+            Button("Сбросить к дефолтным") {
+                showingResetAlert = true
+            }
+            .font(UIStyleFont.body(size: 12, weight: .regular))
+            .foregroundColor(.uiMidGray)
+            .buttonStyle(PlainButtonStyle())
+
+            Spacer()
+
+            if !store.candidates.isEmpty {
+                UIOutlineButton(title: LocalizedStringKey(L10n.format("Кандидаты ИИ (%lld)", Int64(store.candidates.count)))) {
+                    showingCandidatesSheet = true
+                }
+            }
+
+            UIPrimaryButton(title: "Добавить термин") {
+                creatingRule = true
+            }
+        }
+        .padding(20)
+    }
+
+    // MARK: - Действия Импорта и Экспорта
+
+    private func importDictionary() {
+        let panel = NSOpenPanel()
+        panel.title = L10n.tr("Импорт словаря терминов")
+        panel.canChooseFiles = true
+        panel.canChooseDirectories = false
+        panel.allowsMultipleSelection = false
+        if let jsonType = UTType(filenameExtension: "json") {
+            panel.allowedContentTypes = [jsonType]
+        }
+
+        if panel.runModal() == .OK, let url = panel.url {
+            let res = store.importFromURL(url)
+            if let err = res.error {
+                importResultMessage = L10n.format("Ошибка: %@", err)
+            } else {
+                importResultMessage = L10n.format("Успешно импортировано %lld терминов.", Int64(res.imported))
+            }
+            showingImportAlert = true
+        }
+    }
+
+    private func exportDictionary() {
+        let panel = NSSavePanel()
+        panel.title = L10n.tr("Экспорт словаря терминов")
+        panel.nameFieldStringValue = "golosyaka_terms_dictionary.json"
+        if let jsonType = UTType(filenameExtension: "json") {
+            panel.allowedContentTypes = [jsonType]
+        }
+
+        if panel.runModal() == .OK, let url = panel.url {
+            _ = store.exportToURL(url)
+        }
+    }
+}
+
+// MARK: - Редактор / создание правила термина
+
+struct TechTermEditorView: View {
+    @Environment(\.dismiss) private var dismiss
+    @ObservedObject private var store = TechTermStore.shared
+
+    let existingRule: TechTermRule?
+
+    @State private var canonical: String = ""
+    @State private var patternsText: String = ""
+
+    init(rule: TechTermRule?) {
+        self.existingRule = rule
+        _canonical = State(initialValue: rule?.canonical ?? "")
+        _patternsText = State(initialValue: rule?.patterns.joined(separator: ", ") ?? "")
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text(existingRule == nil ? "Новый термин" : "Редактировать термин")
+                .font(UIStyleFont.display(size: 15, weight: .bold))
+                .foregroundColor(.uiInk)
+
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Правильное написание (каноническое)")
+                    .font(UIStyleFont.body(size: 12, weight: .medium))
+                    .foregroundColor(.uiMidGray)
+                TextField("например: Tailscale", text: $canonical)
+                    .textFieldStyle(.plain)
+                    .padding(8)
+                    .background(Color.uiSidebar)
+                    .cornerRadius(8)
+                    .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.uiHairline, lineWidth: 1))
+            }
+
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Варианты ошибок распознавания (через запятую)")
+                    .font(UIStyleFont.body(size: 12, weight: .medium))
+                    .foregroundColor(.uiMidGray)
+                TextField("например: stale skale, talescale, тейлскейл", text: $patternsText)
+                    .textFieldStyle(.plain)
+                    .padding(8)
+                    .background(Color.uiSidebar)
+                    .cornerRadius(8)
+                    .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.uiHairline, lineWidth: 1))
+            }
+
+            HStack {
+                Spacer()
+                UIOutlineButton(title: "Отмена") {
+                    dismiss()
+                }
+                UIPrimaryButton(title: "Сохранить") {
+                    save()
+                    dismiss()
+                }
+                .disabled(canonical.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            }
+            .padding(.top, 8)
+        }
+        .padding(24)
+        .frame(width: 440)
+        .background(Color.uiPaper)
+    }
+
+    private func save() {
+        let cleanCanonical = canonical.trimmingCharacters(in: .whitespacesAndNewlines)
+        let patterns = patternsText
+            .components(separatedBy: ",")
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+
+        guard !cleanCanonical.isEmpty, !patterns.isEmpty else { return }
+
+        if let rule = existingRule {
+            var updated = rule
+            updated.canonical = cleanCanonical
+            updated.patterns = patterns
+            store.update(updated)
+        } else {
+            store.add(canonical: cleanCanonical, patterns: patterns)
+        }
+    }
+}
+
+// MARK: - Окно просмотра кандидатов автообучения (Staging Buffer)
+
+struct TechTermCandidatesView: View {
+    @Environment(\.dismiss) private var dismiss
+    @ObservedObject private var store = TechTermStore.shared
+    @ObservedObject private var language = LanguageSettings.shared
+    @State private var editingCandidate: TechTermCandidate?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Кандидаты автообучения ИИ")
+                        .font(UIStyleFont.display(size: 15, weight: .bold))
+                        .foregroundColor(.uiInk)
+                    Text("Новые созвучные варианты, обнаруженные ИИ. Проверяются автоматически или вручную.")
+                        .font(UIStyleFont.body(size: 11, weight: .regular))
+                        .foregroundColor(.uiMidGray)
+                }
+                Spacer()
+                Button(action: { dismiss() }) {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 11, weight: .bold))
+                        .foregroundColor(.uiMidGray)
+                        .frame(width: 24, height: 24)
+                }
+                .buttonStyle(PlainButtonStyle())
+            }
+
+            if store.candidates.isEmpty {
+                VStack(spacing: 8) {
+                    Spacer()
+                    Image(systemName: "checkmark.seal")
+                        .font(.system(size: 28))
+                        .foregroundColor(Color(hex: "#10B981"))
+                    Text("Буфер кандидатов пуст")
+                        .font(UIStyleFont.body(size: 13, weight: .medium))
+                        .foregroundColor(.uiInk)
+                    Text("Все распознанные искажения либо уже добавлены в словарь, либо отклонены.")
+                        .font(UIStyleFont.body(size: 11, weight: .regular))
+                        .foregroundColor(.uiMidGray)
+                    Spacer()
+                }
+                .frame(maxWidth: .infinity, minHeight: 200)
+            } else {
+                List {
+                    ForEach(store.candidates) { c in
+                        HStack(spacing: 12) {
+                            VStack(alignment: .leading, spacing: 3) {
+                                HStack(spacing: 6) {
+                                    Text(c.canonical)
+                                        .font(UIStyleFont.body(size: 13, weight: .semibold))
+                                        .foregroundColor(.uiInk)
+                                    Text("<- '\(c.pattern)'")
+                                        .font(UIStyleFont.mono(size: 12))
+                                        .foregroundColor(Color(hex: "#10B981"))
+                                }
+                                Text(L10n.format("Встретилось раз: %lld • %@", Int64(c.occurrences), timeAgo(c.lastSeen)))
+                                    .font(UIStyleFont.body(size: 10))
+                                    .foregroundColor(.uiMidGray)
+                            }
+                            Spacer()
+
+                            HStack(spacing: 6) {
+                                Button(action: { editingCandidate = c }) {
+                                    Image(systemName: "pencil")
+                                        .font(.system(size: 11, weight: .bold))
+                                        .foregroundColor(.uiMidGray)
+                                        .frame(width: 26, height: 26)
+                                        .background(Color.uiSidebar)
+                                        .cornerRadius(6)
+                                }
+                                .buttonStyle(PlainButtonStyle())
+                                .help("Редактировать кандидата")
+
+                                Button(action: { store.approveCandidate(c) }) {
+                                    Image(systemName: "checkmark")
+                                        .font(.system(size: 11, weight: .bold))
+                                        .foregroundColor(Color(hex: "#10B981"))
+                                        .frame(width: 26, height: 26)
+                                        .background(Color(hex: "#10B981").opacity(0.12))
+                                        .cornerRadius(6)
+                                }
+                                .buttonStyle(PlainButtonStyle())
+                                .help("Одобрить в словарь")
+
+                                Button(action: { store.rejectCandidate(c) }) {
+                                    Image(systemName: "xmark")
+                                        .font(.system(size: 11, weight: .bold))
+                                        .foregroundColor(.uiEmber)
+                                        .frame(width: 26, height: 26)
+                                        .background(Color.uiEmber.opacity(0.12))
+                                        .cornerRadius(6)
+                                }
+                                .buttonStyle(PlainButtonStyle())
+                                .help("Отклонить")
+                            }
+                        }
+                        .padding(.vertical, 4)
+                    }
+                }
+                .listStyle(.inset)
+                .scrollContentBackground(.hidden)
+                .frame(minHeight: 240, maxHeight: 340)
+            }
+
+            HStack {
+                if !store.candidates.isEmpty {
+                    UIOutlineButton(title: "Очистить всё") {
+                        store.clearCandidates()
+                    }
+                    UIOutlineButton(title: store.isVerifyingCandidates ? "Проверяю…" : "Проверить через ИИ сейчас") {
+                        store.triggerBatchVerificationIfNeeded(force: true)
+                    }
+                    .disabled(store.isVerifyingCandidates)
+
+                    if store.isVerifyingCandidates {
+                        ProgressView().controlSize(.small)
+                    }
+                }
+
+                Spacer()
+
+                UIPrimaryButton(title: "Готово") {
+                    dismiss()
+                }
+            }
+
+            if let message = store.candidateVerificationMessage {
+                Text(message.localized)
+                    .font(UIStyleFont.body(size: 11, weight: .regular))
+                    .foregroundColor(store.candidateVerificationIsError ? .uiEmber : .uiMidGray)
+                    .lineSpacing(2)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .padding(24)
+        .frame(width: 520)
+        .background(Color.uiPaper)
+        .sheet(item: $editingCandidate) { candidate in
+            TechTermCandidateEditorView(candidate: candidate).withAppLocale()
+        }
+    }
+
+    private func timeAgo(_ date: Date) -> String {
+        let formatter = RelativeDateTimeFormatter()
+        formatter.unitsStyle = .short
+        formatter.locale = language.locale
+        return formatter.localizedString(for: date, relativeTo: Date())
+    }
+}
+
+
+// MARK: - Редактор кандидата автообучения
+
+struct TechTermCandidateEditorView: View {
+    @Environment(\.dismiss) private var dismiss
+    @ObservedObject private var store = TechTermStore.shared
+
+    private let original: TechTermCandidate
+    @State private var canonical: String
+    @State private var pattern: String
+
+    init(candidate: TechTermCandidate) {
+        self.original = candidate
+        _canonical = State(initialValue: candidate.canonical)
+        _pattern = State(initialValue: candidate.pattern)
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("Редактировать кандидата")
+                .font(UIStyleFont.display(size: 15, weight: .bold))
+                .foregroundColor(.uiInk)
+
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Правильный термин")
+                    .font(UIStyleFont.body(size: 12, weight: .medium))
+                    .foregroundColor(.uiMidGray)
+                TextField("например: IP-провайдерами", text: $canonical)
+                    .textFieldStyle(.plain)
+                    .padding(8)
+                    .background(Color.uiSidebar)
+                    .cornerRadius(8)
+                    .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.uiHairline, lineWidth: 1))
+            }
+
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Вариант, который распознала модель")
+                    .font(UIStyleFont.body(size: 12, weight: .medium))
+                    .foregroundColor(.uiMidGray)
+                TextField("например: ай-пи провайдерами", text: $pattern)
+                    .textFieldStyle(.plain)
+                    .padding(8)
+                    .background(Color.uiSidebar)
+                    .cornerRadius(8)
+                    .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.uiHairline, lineWidth: 1))
+            }
+
+            HStack {
+                Spacer()
+                UIOutlineButton(title: "Отмена") {
+                    dismiss()
+                }
+                UIPrimaryButton(title: "Сохранить") {
+                    var updated = original
+                    updated.canonical = canonical.trimmingCharacters(in: .whitespacesAndNewlines)
+                    updated.pattern = pattern.trimmingCharacters(in: .whitespacesAndNewlines)
+                    store.updateCandidate(updated)
+                    dismiss()
+                }
+                .disabled(
+                    canonical.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                        || pattern.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                )
+            }
+            .padding(.top, 8)
+        }
+        .padding(24)
+        .frame(width: 460)
+        .background(Color.uiPaper)
+    }
+}

@@ -1,0 +1,593 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		C457EFF53017853C007F26A1 /* NativeHotKeyManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = C457EFF43017853C007F26A1 /* NativeHotKeyManager.swift */; };
+		C4F2FF393016646A006F9170 /* OverlayPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = C4F2FF383016646A006F9170 /* OverlayPanel.swift */; };
+		C4F2FF3B30166B56006F9170 /* PermissionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = C4F2FF3A30166B56006F9170 /* PermissionManager.swift */; };
+		C4F2FF3D30166B6D006F9170 /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C4F2FF3C30166B6D006F9170 /* OnboardingView.swift */; };
+		C4F2FF3F30166DA8006F9170 /* README.md in Resources */ = {isa = PBXBuildFile; fileRef = C4F2FF3E30166DA1006F9170 /* README.md */; };
+		C4F2FF4130168DD0006F9170 /* DashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C4F2FF4030168DD0006F9170 /* DashboardView.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		C4F2FF0830165038006F9170 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = C4F2FEF130165037006F9170 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = C4F2FEF830165037006F9170;
+			remoteInfo = GolosYaka;
+		};
+		C4F2FF1230165038006F9170 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = C4F2FEF130165037006F9170 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = C4F2FEF830165037006F9170;
+			remoteInfo = GolosYaka;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		C457EFF43017853C007F26A1 /* NativeHotKeyManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeHotKeyManager.swift; sourceTree = "<group>"; };
+		C4F2FEF930165037006F9170 /* GolosYaka.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = GolosYaka.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		C4F2FF0730165038006F9170 /* GolosYakaTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = GolosYakaTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		C4F2FF1130165038006F9170 /* GolosYakaUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = GolosYakaUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		C4F2FF383016646A006F9170 /* OverlayPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OverlayPanel.swift; sourceTree = "<group>"; };
+		C4F2FF3A30166B56006F9170 /* PermissionManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PermissionManager.swift; sourceTree = "<group>"; };
+		C4F2FF3C30166B6D006F9170 /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
+		C4F2FF3E30166DA1006F9170 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+		C4F2FF4030168DD0006F9170 /* DashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardView.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedRootGroup section */
+		C4F2FEFB30165037006F9170 /* GolosYaka */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = GolosYaka;
+			sourceTree = "<group>";
+		};
+		C4F2FF0A30165038006F9170 /* GolosYakaTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = GolosYakaTests;
+			sourceTree = "<group>";
+		};
+		C4F2FF1430165038006F9170 /* GolosYakaUITests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = GolosYakaUITests;
+			sourceTree = "<group>";
+		};
+/* End PBXFileSystemSynchronizedRootGroup section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		C4F2FEF630165037006F9170 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		C4F2FF0430165038006F9170 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		C4F2FF0E30165038006F9170 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		C4F2FEF030165037006F9170 = {
+			isa = PBXGroup;
+			children = (
+				C457EFF43017853C007F26A1 /* NativeHotKeyManager.swift */,
+				C4F2FF3E30166DA1006F9170 /* README.md */,
+				C4F2FF4030168DD0006F9170 /* DashboardView.swift */,
+				C4F2FF383016646A006F9170 /* OverlayPanel.swift */,
+				C4F2FF3A30166B56006F9170 /* PermissionManager.swift */,
+				C4F2FF3C30166B6D006F9170 /* OnboardingView.swift */,
+				C4F2FEFB30165037006F9170 /* GolosYaka */,
+				C4F2FF0A30165038006F9170 /* GolosYakaTests */,
+				C4F2FF1430165038006F9170 /* GolosYakaUITests */,
+				C4F2FF3530165E28006F9170 /* Frameworks */,
+				C4F2FEFA30165037006F9170 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		C4F2FEFA30165037006F9170 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				C4F2FEF930165037006F9170 /* GolosYaka.app */,
+				C4F2FF0730165038006F9170 /* GolosYakaTests.xctest */,
+				C4F2FF1130165038006F9170 /* GolosYakaUITests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		C4F2FF3530165E28006F9170 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		C4F2FEF830165037006F9170 /* GolosYaka */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = C4F2FF1B30165038006F9170 /* Build configuration list for PBXNativeTarget "GolosYaka" */;
+			buildPhases = (
+				C4F2FEF530165037006F9170 /* Sources */,
+				C4F2FEF630165037006F9170 /* Frameworks */,
+				C4F2FEF730165037006F9170 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				C4F2FEFB30165037006F9170 /* GolosYaka */,
+			);
+			name = GolosYaka;
+			packageProductDependencies = (
+			);
+			productName = GolosYaka;
+			productReference = C4F2FEF930165037006F9170 /* GolosYaka.app */;
+			productType = "com.apple.product-type.application";
+		};
+		C4F2FF0630165038006F9170 /* GolosYakaTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = C4F2FF1E30165038006F9170 /* Build configuration list for PBXNativeTarget "GolosYakaTests" */;
+			buildPhases = (
+				C4F2FF0330165038006F9170 /* Sources */,
+				C4F2FF0430165038006F9170 /* Frameworks */,
+				C4F2FF0530165038006F9170 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				C4F2FF0930165038006F9170 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				C4F2FF0A30165038006F9170 /* GolosYakaTests */,
+			);
+			name = GolosYakaTests;
+			packageProductDependencies = (
+			);
+			productName = GolosYakaTests;
+			productReference = C4F2FF0730165038006F9170 /* GolosYakaTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		C4F2FF1030165038006F9170 /* GolosYakaUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = C4F2FF2130165038006F9170 /* Build configuration list for PBXNativeTarget "GolosYakaUITests" */;
+			buildPhases = (
+				C4F2FF0D30165038006F9170 /* Sources */,
+				C4F2FF0E30165038006F9170 /* Frameworks */,
+				C4F2FF0F30165038006F9170 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				C4F2FF1330165038006F9170 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				C4F2FF1430165038006F9170 /* GolosYakaUITests */,
+			);
+			name = GolosYakaUITests;
+			packageProductDependencies = (
+			);
+			productName = GolosYakaUITests;
+			productReference = C4F2FF1130165038006F9170 /* GolosYakaUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		C4F2FEF130165037006F9170 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 1640;
+				LastUpgradeCheck = 1640;
+				TargetAttributes = {
+					C4F2FEF830165037006F9170 = {
+						CreatedOnToolsVersion = 16.4;
+					};
+					C4F2FF0630165038006F9170 = {
+						CreatedOnToolsVersion = 16.4;
+						TestTargetID = C4F2FEF830165037006F9170;
+					};
+					C4F2FF1030165038006F9170 = {
+						CreatedOnToolsVersion = 16.4;
+						TestTargetID = C4F2FEF830165037006F9170;
+					};
+				};
+			};
+			buildConfigurationList = C4F2FEF430165037006F9170 /* Build configuration list for PBXProject "GolosYaka" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = C4F2FEF030165037006F9170;
+			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+			);
+			preferredProjectObjectVersion = 77;
+			productRefGroup = C4F2FEFA30165037006F9170 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				C4F2FEF830165037006F9170 /* GolosYaka */,
+				C4F2FF0630165038006F9170 /* GolosYakaTests */,
+				C4F2FF1030165038006F9170 /* GolosYakaUITests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		C4F2FEF730165037006F9170 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				C4F2FF3F30166DA8006F9170 /* README.md in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		C4F2FF0530165038006F9170 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		C4F2FF0F30165038006F9170 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		C4F2FEF530165037006F9170 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				C4F2FF393016646A006F9170 /* OverlayPanel.swift in Sources */,
+				C4F2FF4130168DD0006F9170 /* DashboardView.swift in Sources */,
+				C4F2FF3B30166B56006F9170 /* PermissionManager.swift in Sources */,
+				C457EFF53017853C007F26A1 /* NativeHotKeyManager.swift in Sources */,
+				C4F2FF3D30166B6D006F9170 /* OnboardingView.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		C4F2FF0330165038006F9170 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		C4F2FF0D30165038006F9170 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		C4F2FF0930165038006F9170 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = C4F2FEF830165037006F9170 /* GolosYaka */;
+			targetProxy = C4F2FF0830165038006F9170 /* PBXContainerItemProxy */;
+		};
+		C4F2FF1330165038006F9170 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = C4F2FEF830165037006F9170 /* GolosYaka */;
+			targetProxy = C4F2FF1230165038006F9170 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		C4F2FF1930165038006F9170 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "ГолосЯка просит микрофон для транскрипции";
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = macosx;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OBJC_BRIDGING_HEADER = "GolosYaka/MonoSTT-Bridging-Header.h";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		C4F2FF1A30165038006F9170 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "ГолосЯка просит микрофон для транскрипции";
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				SDKROOT = macosx;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OBJC_BRIDGING_HEADER = "GolosYaka/MonoSTT-Bridging-Header.h";
+			};
+			name = Release;
+		};
+		C4F2FF1C30165038006F9170 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = GolosYaka.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				MARKETING_VERSION = 1.15.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.realmagnum.GolosYaka";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				REGISTER_APP_GROUPS = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_OBJC_BRIDGING_HEADER = "GolosYaka/MonoSTT-Bridging-Header.h";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		C4F2FF1D30165038006F9170 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = GolosYaka.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				MARKETING_VERSION = 1.15.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.realmagnum.GolosYaka";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				REGISTER_APP_GROUPS = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_OBJC_BRIDGING_HEADER = "GolosYaka/MonoSTT-Bridging-Header.h";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		C4F2FF1F30165038006F9170 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.realmagnum.GolosYakaTests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/GolosYaka.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/GolosYaka";
+			};
+			name = Debug;
+		};
+		C4F2FF2030165038006F9170 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.realmagnum.GolosYakaTests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/GolosYaka.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/GolosYaka";
+			};
+			name = Release;
+		};
+		C4F2FF2230165038006F9170 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.realmagnum.GolosYakaUITests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TEST_TARGET_NAME = GolosYaka;
+			};
+			name = Debug;
+		};
+		C4F2FF2330165038006F9170 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.realmagnum.GolosYakaUITests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TEST_TARGET_NAME = GolosYaka;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		C4F2FEF430165037006F9170 /* Build configuration list for PBXProject "GolosYaka" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				C4F2FF1930165038006F9170 /* Debug */,
+				C4F2FF1A30165038006F9170 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		C4F2FF1B30165038006F9170 /* Build configuration list for PBXNativeTarget "GolosYaka" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				C4F2FF1C30165038006F9170 /* Debug */,
+				C4F2FF1D30165038006F9170 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		C4F2FF1E30165038006F9170 /* Build configuration list for PBXNativeTarget "GolosYakaTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				C4F2FF1F30165038006F9170 /* Debug */,
+				C4F2FF2030165038006F9170 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		C4F2FF2130165038006F9170 /* Build configuration list for PBXNativeTarget "GolosYakaUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				C4F2FF2230165038006F9170 /* Debug */,
+				C4F2FF2330165038006F9170 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = C4F2FEF130165037006F9170 /* Project object */;
+}

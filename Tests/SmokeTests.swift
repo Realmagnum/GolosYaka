@@ -1,0 +1,218 @@
+// Локальный smoke-набор GolosYaka.
+//
+// Запускается без Xcode: `./scripts/run-tests.sh` компилирует приложение как модуль
+// с `-enable-testing` и прогоняет проверки ниже. Полный набор на Swift Testing
+// (GolosYakaTests/GolosYakaTests.swift) выполняется в CI через xcodebuild, где есть Xcode.
+//
+// Правило: каждая проверка — чистая функция без сети, UI и доступа к диску.
+
+import Foundation
+import AppKit
+@testable import GolosYaka
+
+// MARK: - Минимальный assert-раннер
+
+final class SmokeRunner {
+    private(set) var passed = 0
+    private(set) var failed = 0
+    private var failures: [String] = []
+
+    func expect(_ condition: @autoclosure () -> Bool, _ message: String, file: StaticString = #fileID, line: UInt = #line) {
+        if condition() {
+            passed += 1
+        } else {
+            failed += 1
+            failures.append("\(file):\(line) — \(message)")
+        }
+    }
+
+    func expectEqual<T: Equatable>(_ lhs: @autoclosure () -> T, _ rhs: @autoclosure () -> T, _ message: String, file: StaticString = #fileID, line: UInt = #line) {
+        let left = lhs()
+        let right = rhs()
+        expect(left == right, "\(message): получили \(left), ожидали \(right)", file: file, line: line)
+    }
+
+    func report() -> Int32 {
+        for failure in failures {
+            print("  ✗ \(failure)")
+        }
+        print("")
+        print(failed == 0 ? "✅ Smoke-тесты: \(passed) проверок, 0 падений" : "❌ Smoke-тесты: \(passed) прошло, \(failed) упало")
+        return failed == 0 ? 0 : 1
+    }
+}
+
+// MARK: - Проверки
+
+let runner = SmokeRunner()
+let r = runner
+
+func timedWords(_ texts: [String]) -> [TimedWord] {
+    texts.enumerated().map { TimedWord(text: $0.element, start: Double($0.offset), end: Double($0.offset) + 1) }
+}
+
+func wordRanges(_ text: String, _ words: [TimedWord]) -> [NSRange] {
+    SyncedTextView.Coordinator(onSeek: { _ in }).wordRanges(text: text, words: words)
+}
+
+// TextFormatter: абзацы
+r.expectEqual(TextFormatter.formatIntoParagraphs(""), "", "Пустой текст остаётся пустым")
+r.expectEqual(TextFormatter.formatIntoParagraphs("просто строка"), "просто строка", "Текст без пунктуации не меняется")
+r.expectEqual(
+    TextFormatter.formatIntoParagraphs("Привет. Как дела? Хорошо!"),
+    "Привет. Как дела? Хорошо!",
+    "Три предложения — один абзац"
+)
+r.expectEqual(
+    TextFormatter.formatIntoParagraphs("Первое. Второе. Третье. Четвертое."),
+    "Первое. Второе. Третье.\n\nЧетвертое.",
+    "Разрыв абзаца после третьего предложения"
+)
+r.expectEqual(
+    TextFormatter.formatIntoParagraphs("— Привет. — Здравствуй!"),
+    "— Привет.\n\n— Здравствуй!",
+    "Реплики диалога — отдельные абзацы"
+)
+
+// TextFormatter: числа
+r.expectEqual(TextFormatter.normalizeRussianNumbers("у меня двадцать пять файлов"), "у меня 25 файлов", "Составное число")
+r.expectEqual(TextFormatter.normalizeRussianNumbers("двадцать пять тысяч сто двадцать три"), "25123", "Большое число")
+r.expectEqual(TextFormatter.normalizeRussianNumbers("пять миллионов триста тысяч"), "5300000", "Миллионы")
+r.expectEqual(
+    TextFormatter.normalizeRussianNumbers("пятый этаж, двадцать пять процентов."),
+    "пятый этаж, 25 процентов.",
+    "Порядковые числительные не трогаем"
+)
+r.expectEqual(TextFormatter.normalizeRussianNumbers("двадцать, пять, шесть и семь"), "20, 5, 6 и 7", "Числа через запятую")
+
+// Границы чанков
+r.expectEqual(
+    AudioCapture.removeBoundaryDuplicate(previous: "... мы проверили этот код", current: "этот код и нашли ошибку"),
+    "и нашли ошибку",
+    "Дубль на стыке чанков удаляется"
+)
+r.expectEqual(
+    AudioCapture.removeBoundaryDuplicate(previous: "... открыли настройки", current: "снова открыли настройки"),
+    "снова открыли настройки",
+    "Разные слова на стыке остаются"
+)
+r.expectEqual(
+    AudioCapture.removeBoundaryDuplicate(previous: "да", current: "да, конечно"),
+    "да, конечно",
+    "Короткое совпадение не режется"
+)
+
+// Тайминги
+do {
+    let mapping = AudioCapture.TimeIntervalMapping(
+        compressedStart: 0.0,
+        compressedEnd: 1.0,
+        originalStart: 0.0,
+        originalEnd: 3.5
+    )
+    let result = AudioCapture.ClampedAudioResult(url: URL(fileURLWithPath: "/tmp/fake.wav"), mappings: [mapping])
+    r.expectEqual(result.mapCompressedToOriginal(0.5), 0.5, "Тайминг внутри сегмента")
+    r.expectEqual(result.mapCompressedToOriginal(1.5), 4.0, "Тайминг за пределами сегмента")
+}
+
+do {
+    let words = timedWords(["а", "б", "в"])
+    let result = AudioCapture.interpolateTimings(words, from: 1.0, to: 4.0)
+    r.expectEqual(result.count, 3, "Интерполяция сохраняет число слов")
+    r.expectEqual(result[0].start, 1.0, "Интерполяция стартует с начала диапазона")
+    r.expect(result[2].end <= 4.001, "Интерполяция не выходит за диапазон")
+    for i in 1..<result.count {
+        r.expect(result[i].start >= result[i - 1].end, "Слова не перекрываются")
+        r.expect(result[i].end > result[i].start, "Длительность слова положительная")
+    }
+}
+
+do {
+    let msWords = [TimedWord(text: "Привет", start: 0, end: 7650.5), TimedWord(text: "мир", start: 7650.5, end: 8000)]
+    let normalized = AudioCapture.normalizedWords(msWords, duration: 7.6)
+    r.expectEqual(normalized[0].end, 7.6505, "Миллисекунды конвертируются в секунды")
+    r.expectEqual(normalized[1].start, 7.6505, "Начало второго слова тоже конвертируется")
+
+    let seconds = [TimedWord(text: "Так,", start: 0.76, end: 1.04), TimedWord(text: "звук", start: 1.2, end: 1.48)]
+    r.expectEqual(AudioCapture.normalizedWords(seconds, duration: 6.6), seconds, "Секунды остаются как есть")
+}
+
+// Субтитры
+do {
+    let words = [
+        TimedWord(text: "Привет,", start: 0.0, end: 0.5),
+        TimedWord(text: "мир.", start: 0.5, end: 1.0),
+        TimedWord(text: "Как", start: 1.5, end: 1.7),
+        TimedWord(text: "дела?", start: 1.7, end: 2.2)
+    ]
+    let cues = AudioCapture.makeSubtitleCues(from: words)
+    r.expectEqual(cues.count, 2, "Две фразы — две реплики")
+    r.expectEqual(cues[0].text, "Привет, мир.", "Первая реплика собрана")
+    r.expectEqual(cues[1].text, "Как дела?", "Вторая реплика собрана")
+
+    let srt = AudioCapture.srtContent(cues: [SubtitleCue(start: 0.0, end: 2.36, text: "Привет, это проверка")])
+    r.expectEqual(srt, "1\n00:00:00,000 --> 00:00:02,360\nПривет, это проверка\n\n", "SRT форматируется верно")
+
+    let vtt = AudioCapture.vttContent(cues: [SubtitleCue(start: 1.5, end: 3.0, text: "Текст")])
+    r.expect(vtt.hasPrefix("WEBVTT\n\n"), "VTT начинается с заголовка")
+    r.expect(vtt.contains("00:00:01.500 --> 00:00:03.000"), "VTT использует точку в таймкоде")
+
+    r.expectEqual(AudioCapture.srtTime(3661.5), "01:01:01,500", "SRT-время")
+    r.expectEqual(AudioCapture.vttTime(3661.5), "01:01:01.500", "VTT-время")
+}
+
+// Сравнение версий апдейтера
+r.expectEqual(AudioCapture.compareVersions("v1.12.2", "1.12.1"), .orderedDescending, "Новая версия больше")
+r.expectEqual(AudioCapture.compareVersions("1.10.0", "1.12.1"), .orderedAscending, "Старая версия меньше")
+r.expectEqual(AudioCapture.compareVersions("1.12.1", "1.12.1"), .orderedSame, "Равные версии")
+r.expectEqual(AudioCapture.compareVersions("2.0", "1.99.9"), .orderedDescending, "Разная длина версий")
+
+// Доверие к источнику обновлений
+r.expect(AudioCapture.isTrustedReleaseAsset(URL(string: "https://github.com/Realmagnum/GolosYaka/releases/download/v1/dmg")!), "GitHub-ассет доверенный")
+r.expect(AudioCapture.isTrustedReleaseAsset(URL(string: "https://objects.githubusercontent.com/file")!), "CDN GitHub доверенный")
+r.expect(!AudioCapture.isTrustedReleaseAsset(URL(string: "http://github.com/file")!), "HTTP не доверяем")
+r.expect(!AudioCapture.isTrustedReleaseAsset(URL(string: "https://evil.example.com/GolosYaka.dmg")!), "Чужой хост не доверяем")
+
+// Выравнивание слов
+do {
+    let text = "Привет! Это проверка."
+    let ranges = wordRanges(text, timedWords(["Привет!", "Это", "проверка."]))
+    r.expectEqual(ranges.count, 3, "Три слова — три диапазона")
+    r.expectEqual(ranges[0], NSRange(location: 0, length: 7), "Первый диапазон точный")
+    r.expectEqual(ranges[2], NSRange(location: 12, length: 9), "Третий диапазон точный")
+
+    let replaced = wordRanges("привет Tailscale мир", timedWords(["привет", "тейлскейл", "мир"]))
+    r.expectEqual(replaced[1], NSRange(location: 7, length: 9), "Заменённый термин занимает весь промежуток")
+
+    let missing = wordRanges("привет мир", timedWords(["привет", "неттакого", "мир"]))
+    r.expectEqual(missing[1].location, NSNotFound, "Отсутствующее слово — NSNotFound")
+
+    r.expect(wordRanges("", timedWords(["слово"])).isEmpty, "Пустой текст — нет диапазонов")
+}
+
+// Поиск по транскрипту
+do {
+    let words = timedWords(["Привет", "мир", "ПРИВЕТ", "дом"])
+    r.expectEqual(TranscriptSearch.matchedWordIndices(in: words, query: "привет"), [0, 2], "Поиск без учёта регистра")
+    r.expectEqual(TranscriptSearch.matchedWordIndices(in: timedWords(["прилетел", "привет", "ушёл"]), query: "при"), [0, 1], "Поиск по подстроке")
+    r.expectEqual(TranscriptSearch.matchedWordIndices(in: timedWords(["еле", "ёлка", "ёж"]), query: "е"), [0, 1, 2], "Поиск без учёта диакритики")
+    r.expect(TranscriptSearch.matchedWordIndices(in: words, query: "").isEmpty, "Пустой запрос — нет совпадений")
+    r.expectEqual(TranscriptSearch.matchedRanges(in: "кот пошёл к коту за котёнком", query: "кот").count, 3, "Все вхождения в тексте")
+    r.expect(TranscriptSearch.matchedRanges(in: "текст", query: "").isEmpty, "Пустой запрос в тексте — нет совпадений")
+}
+
+// Ренейм и миграция данных
+r.expectEqual(AppPaths.folderName, "GolosYaka", "Каталог данных нового бренда")
+r.expectEqual(AppPaths.legacyFolderName, "Golosok", "Каталог предыдущей версии")
+r.expectEqual(LegacyMigration.legacyBundleIdentifier, "kozak-developer.Golosok", "Bundle id предыдущей версии")
+
+// Дашборд
+do {
+    let empty = DashboardCalculator.calculate(from: [])
+    r.expectEqual(empty.totalNotes, 0, "Пустая история — 0 заметок")
+    r.expectEqual(empty.hoursSaved, "0.00", "Пустая история — 0 часов")
+    r.expectEqual(empty.levelName, "НОВИЧОК", "Стартовый уровень")
+    r.expectEqual(empty.wpm, 0, "Пустая история — 0 wpm")
+}
+
+exit(runner.report())

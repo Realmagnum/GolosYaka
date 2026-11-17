@@ -1,0 +1,161 @@
+import SwiftUI
+
+struct AboutView: View {
+    @ObservedObject var audioCapture = AudioCapture.shared
+    @Environment(\.dismiss) private var dismiss
+    @Environment(\.openURL) private var openURL
+    
+    var currentVersionStr: String {
+        let ver = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? ""
+        return "v\(ver)"
+    }
+    
+    var body: some View {
+        VStack(spacing: 20) {
+            // 1. ИКОНКА И ЗАГОЛОВОК
+            VStack(spacing: 10) {
+                Image(nsImage: NSApp.applicationIconImage)
+                    .resizable()
+                    .frame(width: 64, height: 64)
+                    .shadow(color: Color.black.opacity(0.12), radius: 8, x: 0, y: 4)
+                
+                Text("ГолосЯка")
+                    .font(UIStyleFont.display(size: 20, weight: .bold))
+                    .foregroundColor(.uiInk)
+                
+                HStack(spacing: 8) {
+                    UIBadge(text: currentVersionStr)
+                    
+                    if let update = audioCapture.updateInfo {
+                        HStack(spacing: 6) {
+                            if audioCapture.isDownloadingUpdate {
+                                ProgressView().scaleEffect(0.6)
+                                Text(audioCapture.updateProgressStatus == .idle
+                                     ? LocalizedStringKey("Скачивание...")
+                                     : LocalizedStringKey(audioCapture.updateProgressStatus.localized))
+                                    .font(UIStyleFont.body(size: 10, weight: .bold))
+                                    .foregroundColor(.white)
+                                Button(action: { audioCapture.cancelUpdateDownload() }) {
+                                    Image(systemName: "xmark.circle.fill").foregroundColor(.white.opacity(0.8))
+                                }.buttonStyle(.plain)
+                            } else {
+                                Button(action: { audioCapture.downloadAndInstallUpdate() }) {
+                                    HStack(spacing: 4) {
+                                        Image(systemName: "arrow.down.circle.fill")
+                                        Text(String(format: String(localized: "Доступна %@"), update.codename))
+                                    }
+                                    .font(UIStyleFont.body(size: 10, weight: .bold))
+                                    .foregroundColor(.white)
+                                }.buttonStyle(.plain)
+                            }
+                        }
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 5)
+                        .background(Color.uiWarn)
+                        .cornerRadius(14)
+                    } else {
+                        HStack(spacing: 5) {
+                            Circle()
+                                .fill(Color(hex: "#10B981"))
+                                .frame(width: 6, height: 6)
+                            Text(LocalizedStringKey("Актуальная версия"))
+                                .font(UIStyleFont.body(size: 10, weight: .semibold))
+                                .foregroundColor(Color(hex: "#10B981"))
+                        }
+                        .padding(.horizontal, 9)
+                        .padding(.vertical, 4)
+                        .background(Color(hex: "#10B981").opacity(0.12))
+                        .cornerRadius(14)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 14)
+                                .stroke(Color(hex: "#10B981").opacity(0.25), lineWidth: 1)
+                        )
+                    }
+                }
+            }
+            
+            // 2. ОПИСАНИЕ
+            Text("Автоматический ввод надиктованного текста и расшифровка аудиофайлов. Локальная обработка речи без передачи данных посторонним.")
+                .font(UIStyleFont.body(size: 12, weight: .regular))
+                .multilineTextAlignment(.center)
+                .foregroundColor(.uiMidGray)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.horizontal, 12)
+            
+            Divider().background(Color.uiHairline)
+            
+            // 3. ТЕХНИЧЕСКИЙ СТЕК
+            HStack(spacing: 8) {
+                TechBadge(text: "GIGAAM V3")
+                TechBadge(text: "APPLE SILICON")
+                TechBadge(text: "CORE ML")
+            }
+            
+            Divider().background(Color.uiHairline)
+            
+            // 4. КНОПКИ
+            HStack(spacing: 8) {
+                AboutLinkButton(title: "GitHub", icon: "terminal.fill") {
+                    openURL(URL(string: "https://github.com/Realmagnum/GolosYaka/")!)
+                }
+                AboutLinkButton(title: "Поддержка", icon: "envelope") {
+                    openURL(URL(string: "https://t.me/Realmagnum")!)
+                }
+                AboutLinkButton(title: "Релизы", icon: "doc.text") {
+                    openURL(URL(string: "https://github.com/Realmagnum/GolosYaka/releases")!)
+                }
+            }
+            
+            Divider().background(Color.uiHairline)
+            
+            // 5. КНОПКА ЗАКРЫТИЯ
+            HStack {
+                Spacer()
+                UIOutlineButton(title: "Закрыть") {
+                    dismiss()
+                }
+            }
+        }
+        .padding(24)
+        .frame(width: 360)
+        .background(Color.uiPaper)
+    }
+}
+
+struct TechBadge: View {
+    let text: String
+    var body: some View {
+        Text(text)
+            .font(.system(size: 9, weight: .bold, design: .monospaced))
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+            .background(Color.uiCanvas)
+            .cornerRadius(6)
+            .overlay(RoundedRectangle(cornerRadius: 6).stroke(Color.uiHairline, lineWidth: 1))
+            .foregroundColor(.uiInk)
+    }
+}
+
+struct AboutLinkButton: View {
+    let title: LocalizedStringKey
+    let icon: String
+    let action: () -> Void
+    
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 6) {
+                Image(systemName: icon)
+                    .font(.system(size: 11, weight: .medium))
+                Text(title)
+                    .font(UIStyleFont.body(size: 12, weight: .medium))
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 7)
+            .background(Color.uiCanvas)
+            .cornerRadius(12)
+            .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.uiHairline, lineWidth: 1))
+            .foregroundColor(.uiInk)
+        }
+        .buttonStyle(TactileButtonStyle())
+    }
+}
