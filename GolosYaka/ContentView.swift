@@ -2033,19 +2033,56 @@ struct FileDropOverlay: View {
 /// Слабая ссылка на `NSWindow`, в котором живёт ContentView.
 final class MainWindowRegistry {
     static let shared = MainWindowRegistry()
-    weak var window: NSWindow?
+    private weak var window: NSWindow?
+    private var revealPending = false
     private init() {}
+
+    func requestReveal() {
+        revealPending = true
+    }
+
+    /// SwiftUI может повторно использовать закрытое окно, не прикрепляя view
+    /// заново. Проверяем зарегистрированное окно после обработки openWindow.
+    func revealRegisteredWindow() {
+        guard revealPending, let window else { return }
+        reveal(window)
+    }
+
+    func register(_ window: NSWindow) {
+        self.window = window
+        if revealPending {
+            DispatchQueue.main.async { [weak self, weak window] in
+                guard let self, let window, self.revealPending, self.window === window else { return }
+                self.reveal(window)
+            }
+        }
+    }
+
+    private func reveal(_ window: NSWindow) {
+        revealPending = false
+        if window.isMiniaturized { window.deminiaturize(nil) }
+        if #available(macOS 14.0, *) { NSApp.activate() }
+        else { NSApp.activate(ignoringOtherApps: true) }
+        window.makeKeyAndOrderFront(nil)
+        window.orderFrontRegardless()
+        AppLogger.shared.info("App", "Reveal", details: "visible=\(window.isVisible), isActive=\(NSApp.isActive), key=\(window.isKeyWindow)")
+    }
 }
 
 /// Регистрирует окно хозяина в `MainWindowRegistry`, как только оно появилось.
 struct WindowAccessor: NSViewRepresentable {
     func makeNSView(context: Context) -> NSView {
-        let view = NSView(frame: .zero)
-        DispatchQueue.main.async { MainWindowRegistry.shared.window = view.window }
-        return view
+        WindowRegistrationView(frame: .zero)
     }
 
     func updateNSView(_ nsView: NSView, context: Context) {
-        DispatchQueue.main.async { MainWindowRegistry.shared.window = nsView.window }
+        if let window = nsView.window { MainWindowRegistry.shared.register(window) }
+    }
+
+    private final class WindowRegistrationView: NSView {
+        override func viewDidMoveToWindow() {
+            super.viewDidMoveToWindow()
+            if let window { MainWindowRegistry.shared.register(window) }
+        }
     }
 }

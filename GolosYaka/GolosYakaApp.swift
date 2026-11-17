@@ -2,46 +2,10 @@ import SwiftUI
 import AppKit
 
 class AppDelegate: NSObject, NSApplicationDelegate {
-    /// Выводит главное окно на передний план.
-    ///
-    /// Три механизма подряд, потому что macOS 14+ отдаёт активацию фоновому
-    /// приложению не всегда:
-    /// 1. напрямую активируем приложение и поднимаем окно;
-    /// 2. посылаем reopen через LaunchServices — ровно то событие, что приходит
-    ///    при клике по иконке в Dock (он в этом приложении работает);
-    /// 3. если активацию так и не выдали — на несколько секунд поднимаем окно
-    ///    уровнем `.floating`, чтобы оно было видно, и возвращаем `.normal`,
-    ///    как только приложение станет активным.
-    @objc func activateMainWindow() {
-        NSApp.setActivationPolicy(.regular)
+    /// Повторный запуск через Launch Services передаёт системе намерение
+    /// пользователя активировать приложение (как при открытии из Finder).
+    func requestMainWindowActivation() {
         NSApp.unhide(nil)
-
-        let window = MainWindowRegistry.shared.window ?? fallbackWindow()
-        AppLogger.shared.info(
-            "App",
-            "Reveal",
-            details: "window=\(window != nil), visible=\(window?.isVisible ?? false), isActive=\(NSApp.isActive)"
-        )
-
-        if let window {
-            if window.isMiniaturized { window.deminiaturize(nil) }
-            window.orderFrontRegardless()
-            if !window.isKeyWindow { window.makeKey() }
-        }
-
-        NSApp.activate(ignoringOtherApps: true)
-        if #available(macOS 14.0, *) { NSApp.activate() }
-        NSRunningApplication.current.activate(options: [.activateAllWindows])
-
-        requestReopen()
-
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.7) { [weak self] in
-            self?.raiseIfStillInactive()
-        }
-    }
-
-    /// Reopen-событие через LaunchServices: то же, что посылает Dock.
-    private func requestReopen() {
         let configuration = NSWorkspace.OpenConfiguration()
         configuration.activates = true
         NSWorkspace.shared.openApplication(at: Bundle.main.bundleURL, configuration: configuration) { _, error in
@@ -49,41 +13,14 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 AppLogger.shared.warn("App", "Reveal: reopen не доставлен", details: error.localizedDescription)
             }
         }
-    }
-
-    /// Последний рубеж: активацию не дали, но окно должно быть видно.
-    private func raiseIfStillInactive() {
-        guard !NSApp.isActive,
-              let window = MainWindowRegistry.shared.window ?? fallbackWindow() else { return }
-        AppLogger.shared.warn("App", "Reveal: активация не выдана, поднимаю окно поверх", details: "")
-        window.level = .floating
-        window.orderFrontRegardless()
-
-        var observer: NSObjectProtocol?
-        let restore = {
-            window.level = .normal
-            if let observer { NotificationCenter.default.removeObserver(observer) }
-        }
-        observer = NotificationCenter.default.addObserver(
-            forName: NSApplication.didBecomeActiveNotification,
-            object: nil,
-            queue: .main
-        ) { _ in restore() }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 4) { restore() }
-    }
-
-    /// Запасной поиск, если accessor ещё не зарегистрировал окно.
-    private func fallbackWindow() -> NSWindow? {
-        let candidates = NSApp.windows.filter { $0.canBecomeMain && !($0 is NSPanel) }
-        return candidates.first(where: { $0.isVisible }) ?? candidates.first
+        if #available(macOS 14.0, *) { NSApp.activate() }
+        else { NSApp.activate(ignoringOtherApps: true) }
     }
 
     /// Клик по иконке в Dock, повторный `open` и reopen-событие.
     /// Окно после закрытия крестиком создаёт SwiftUI по этому событию, поэтому
     /// здесь достаточно активировать приложение.
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
-        NSApp.setActivationPolicy(.regular)
-        NSApp.activate(ignoringOtherApps: true)
         return true
     }
 
@@ -145,9 +82,6 @@ struct GolosYakaApp: App {
             ContentView()
                 .withAppLocale()
                 .frame(minWidth: 990, minHeight: 710)
-                .onAppear {
-                    (NSApp.delegate as? AppDelegate)?.activateMainWindow()
-                }
         }
         
         .commands {
@@ -214,10 +148,14 @@ private struct MenuBarMenu: View {
         }
 
         Button(L10n.tr("Развернуть ГолосЯку")) {
-            // openWindow создаёт окно, если оно закрыто; reopen внутри
-            // activateMainWindow активирует приложение так же, как Dock.
+            // Сохраняем запрос до того момента, когда SwiftUI прикрепит
+            // ContentView к новому NSWindow после закрытия крестиком.
+            MainWindowRegistry.shared.requestReveal()
+            (NSApp.delegate as? AppDelegate)?.requestMainWindowActivation()
             openWindow(id: "main")
-            (NSApp.delegate as? AppDelegate)?.activateMainWindow()
+            DispatchQueue.main.async {
+                MainWindowRegistry.shared.revealRegisteredWindow()
+            }
         }
 
         Divider()
