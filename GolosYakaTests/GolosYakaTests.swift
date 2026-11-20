@@ -308,6 +308,65 @@ struct GolosYakaTests {
         #expect(result == words)
     }
 
+    // MARK: - Remote verbose_json word parsing
+
+    @Test func parseRemoteWordsReadsFlatOpenAIWords() {
+        let json: [String: Any] = [
+            "text": "Привет мир",
+            "words": [
+                ["word": "Привет", "start": 0.1, "end": 0.8],
+                ["word": "мир", "start": 1.0, "end": 1.8]
+            ]
+        ]
+        let words = AudioCapture.parseRemoteWords(json)
+        #expect(words.map(\.text) == ["Привет", "мир"])
+        #expect(words[0].start == 0.1)
+        #expect(words[1].end == 1.8)
+    }
+
+    @Test func parseRemoteWordsFallsBackToSegments() {
+        let json: [String: Any] = [
+            "segments": [
+                [
+                    "start": 0.0,
+                    "end": 2.0,
+                    "words": [
+                        ["text": "Привет", "start": "0.2", "end": "0.9"],
+                        ["text": "мир", "start": 1.0, "end": 1.8]
+                    ]
+                ]
+            ]
+        ]
+        let words = AudioCapture.parseRemoteWords(json)
+        #expect(words.map(\.text) == ["Привет", "мир"])
+        #expect(words[0].start == 0.2)
+    }
+
+    @Test func parseRemoteWordsConvertsWhisperCppMilliseconds() {
+        let json: [String: Any] = [
+            "transcription": [
+                ["text": "Привет", "offsets": ["from": 100, "to": 800]],
+                ["text": "мир", "offsets": ["from": 1000, "to": 1800]]
+            ]
+        ]
+        let words = AudioCapture.parseRemoteWords(json)
+        #expect(words.map(\.text) == ["Привет", "мир"])
+        #expect(words[0].start == 0.1)
+        #expect(words[1].end == 1.8)
+    }
+
+    @Test func parseRemoteWordsSkipsEmptyAndTimelessEntries() {
+        let json: [String: Any] = [
+            "words": [
+                ["word": "", "start": 0.1, "end": 0.8],
+                ["word": "слово"],
+                ["word": "ок", "start": 1.0, "end": 1.5]
+            ]
+        ]
+        let words = AudioCapture.parseRemoteWords(json)
+        #expect(words.map(\.text) == ["ок"])
+    }
+
     // MARK: - Subtitle export
 
     @Test func subtitleCuesGroupBySentence() {

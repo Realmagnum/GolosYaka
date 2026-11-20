@@ -137,6 +137,55 @@ do {
     r.expectEqual(AudioCapture.normalizedWords(seconds, duration: 6.6), seconds, "Секунды остаются как есть")
 }
 
+// Парсинг verbose_json от удаленного OpenAI-совместимого сервера
+do {
+    let flat: [String: Any] = [
+        "text": "Привет мир",
+        "words": [
+            ["word": "Привет", "start": 0.1, "end": 0.8],
+            ["word": "мир", "start": 1.0, "end": 1.8]
+        ]
+    ]
+    let flatWords = AudioCapture.parseRemoteWords(flat)
+    r.expectEqual(flatWords.map(\.text), ["Привет", "мир"], "Плоский words читается")
+    r.expectEqual(flatWords[1].end, 1.8, "Таймкод последнего слова сохраняется")
+
+    let segmented: [String: Any] = [
+        "segments": [
+            [
+                "start": 0.0,
+                "end": 2.0,
+                "words": [
+                    ["text": "Привет", "start": "0.2", "end": "0.9"],
+                    ["text": "мир", "start": 1.0, "end": 1.8]
+                ]
+            ]
+        ]
+    ]
+    let segWords = AudioCapture.parseRemoteWords(segmented)
+    r.expectEqual(segWords.map(\.text), ["Привет", "мир"], "Слова из segments читаются")
+    r.expectEqual(segWords[0].start, 0.2, "Строковые таймкоды парсятся")
+
+    let whisperCpp: [String: Any] = [
+        "transcription": [
+            ["text": "Привет", "offsets": ["from": 100, "to": 800]],
+            ["text": "мир", "offsets": ["from": 1000, "to": 1800]]
+        ]
+    ]
+    let msWords = AudioCapture.parseRemoteWords(whisperCpp)
+    r.expectEqual(msWords[0].start, 0.1, "Миллисекунды whisper.cpp конвертируются в секунды")
+    r.expectEqual(msWords[1].end, 1.8, "Миллисекунды конца тоже конвертируются")
+
+    let sparse: [String: Any] = [
+        "words": [
+            ["word": "", "start": 0.1, "end": 0.8],
+            ["word": "слово"],
+            ["word": "ок", "start": 1.0, "end": 1.5]
+        ]
+    ]
+    r.expectEqual(AudioCapture.parseRemoteWords(sparse).map(\.text), ["ок"], "Пустые и бессрочные записи пропускаются")
+}
+
 // Субтитры
 do {
     let words = [

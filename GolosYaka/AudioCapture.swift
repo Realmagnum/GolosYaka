@@ -1452,10 +1452,64 @@ class AudioCapture: NSObject, ObservableObject, AVAudioRecorderDelegate {
     }
 
     private func runRemoteOpenAITranscription(wavURL: URL, endpoint: URL, model: RecognitionModel) -> (text: String, words: [TimedWord]) {
-        let semaphore = DispatchSemaphore(value: 0)
-        var resultText = ""
-        
-        var request = URLRequest(url: endpoint)
+        let timeout: TimeInterval = 120
+
+        func perform(wordTimestamps: Bool) -> (json: [String: Any]?, statusCode: Int, errorText: String?) {
+            let semaphore = DispatchSemaphore(value: 0)
+            var payload: [String: Any]?
+            var statusCode = 0
+            var errorText: String?
+
+            let request = Self.makeRemoteTranscriptionRequest(url: endpoint, wavURL: wavURL, model: model, wordTimestamps: wordTimestamps)
+            let task = URLSession.shared.dataTask(with: request) { data, response, error in
+                defer { semaphore.signal() }
+                if let error = error {
+                    AppLogger.shared.error("Recognition", "Ошибка удаленного распознавания: \(error.localizedDescription)")
+                    errorText = error.localizedDescription
+                    return
+                }
+                if let http = response as? HTTPURLResponse {
+                    statusCode = http.statusCode
+                    if !(200..<300).contains(http.statusCode) {
+                        let detail = data.flatMap { AIService.extractError(from: $0) } ?? "HTTP \(http.statusCode)"
+                        errorText = detail
+                        AppLogger.shared.error("Recognition", "Удаленный сервер распознавания вернул ошибку", details: detail)
+                        return
+                    }
+                }
+                guard let data = data,
+                      let json = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] else {
+                    errorText = "невалидный JSON-ответ"
+                    return
+                }
+                payload = json
+            }
+            task.resume()
+            _ = semaphore.wait(timeout: .now() + timeout)
+            return (payload, statusCode, errorText)
+        }
+
+        // Сначала просим слова со временем (verbose_json + granularities),
+        // при отказе сервера падаем обратно на обычный json без таймингов.
+        let verbose = perform(wordTimestamps: true)
+        var json = verbose.json
+        if json == nil, verbose.statusCode == 400 || verbose.statusCode == 422,
+           let detail = verbose.errorText?.lowercased(),
+           detail.contains("response_format") || detail.contains("timestamp_granularities") || detail.contains("verbose") {
+            AppLogger.shared.warn("Recognition", "Сервер отклонил verbose_json, повтор с обычным json", details: verbose.errorText)
+            json = perform(wordTimestamps: false).json
+        }
+        guard let json else { return ("", []) }
+
+        let text = (json["text"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        return (text, Self.finalizeWords(Self.parseRemoteWords(json)))
+    }
+
+    /// Сборка multipart-запроса к OpenAI-совместимому /audio/transcriptions.
+    /// `wordTimestamps` включает verbose_json со словами и сегментами; часть серверов
+    /// (whisper.cpp и др.) эти параметры не принимает, поэтому управляется флагом.
+    private static func makeRemoteTranscriptionRequest(url: URL, wavURL: URL, model: RecognitionModel, wordTimestamps: Bool) -> URLRequest {
+        var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.timeoutInterval = 120
         if let key = KeyStore.get("asr.custom.\(model.id).apiKey") ?? model.apiKey, !key.isEmpty {
@@ -1466,6 +1520,12 @@ class AudioCapture: NSObject, ObservableObject, AVAudioRecorderDelegate {
         request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
 
         var body = Data()
+        func appendField(_ name: String, _ value: String) {
+            body.append("--\(boundary)\r\n".data(using: .utf8)!)
+            body.append("Content-Disposition: form-data; name=\"\(name)\"\r\n\r\n".data(using: .utf8)!)
+            body.append(value.data(using: .utf8)!)
+            body.append("\r\n".data(using: .utf8)!)
+        }
         // file
         if let fileData = try? Data(contentsOf: wavURL) {
             body.append("--\(boundary)\r\n".data(using: .utf8)!)
@@ -1476,36 +1536,64 @@ class AudioCapture: NSObject, ObservableObject, AVAudioRecorderDelegate {
         }
         // model
         if let modelId = model.modelIdentifier, !modelId.isEmpty {
-            body.append("--\(boundary)\r\n".data(using: .utf8)!)
-            body.append("Content-Disposition: form-data; name=\"model\"\r\n\r\n".data(using: .utf8)!)
-            body.append("\(modelId)\r\n".data(using: .utf8)!)
+            appendField("model", modelId)
+        }
+        if wordTimestamps {
+            appendField("response_format", "verbose_json")
+            appendField("timestamp_granularities[]", "segment")
+            appendField("timestamp_granularities[]", "word")
         }
         body.append("--\(boundary)--\r\n".data(using: .utf8)!)
         request.httpBody = body
+        return request
+    }
 
-        let task = URLSession.shared.dataTask(with: request) { data, response, error in
-            defer { semaphore.signal() }
-            if let error = error {
-                AppLogger.shared.error("Recognition", "Ошибка удаленного распознавания: \(error.localizedDescription)")
-                return
-            }
-            if let http = response as? HTTPURLResponse, !(200..<300).contains(http.statusCode) {
-                let detail = data.flatMap { AIService.extractError(from: $0) } ?? "HTTP \(http.statusCode)"
-                AppLogger.shared.error("Recognition", "Удаленный сервер распознавания вернул ошибку", details: detail)
-                return
-            }
-            guard let data = data,
-                  let json = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] else {
-                return
-            }
-            if let t = json["text"] as? String {
-                resultText = t.trimmingCharacters(in: .whitespacesAndNewlines)
+    /// Разбор слов с таймкодами из OpenAI-совместимого ответа.
+    /// Поддерживаются: плоский `words`, `segments[].words` и формат whisper.cpp
+    /// (`transcription[]` с `offsets.from/to` в миллисекундах).
+    static func parseRemoteWords(_ json: [String: Any]) -> [TimedWord] {
+        func seconds(_ value: Any?) -> Double? {
+            if let n = value as? NSNumber { return n.doubleValue }
+            if let n = value as? Double { return n }
+            if let n = value as? Int { return Double(n) }
+            if let s = value as? String { return Double(s.replacingOccurrences(of: ",", with: ".")) }
+            return nil
+        }
+        func timedWord(text: Any?, start: Any?, end: Any?) -> TimedWord? {
+            guard let text = text as? String else { return nil }
+            let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !trimmed.isEmpty, let s = seconds(start), let e = seconds(end) else { return nil }
+            return TimedWord(text: trimmed, start: s, end: e)
+        }
+
+        var words: [TimedWord] = []
+        if let list = json["words"] as? [[String: Any]] {
+            for item in list {
+                if let w = timedWord(text: item["word"] ?? item["text"], start: item["start"], end: item["end"]) {
+                    words.append(w)
+                }
             }
         }
-        task.resume()
-        _ = semaphore.wait(timeout: .now() + 120)
-
-        return (resultText, [])
+        if words.isEmpty, let segments = json["segments"] as? [[String: Any]] {
+            for segment in segments {
+                if let list = segment["words"] as? [[String: Any]] {
+                    for item in list {
+                        if let w = timedWord(text: item["word"] ?? item["text"], start: item["start"], end: item["end"]) {
+                            words.append(w)
+                        }
+                    }
+                }
+            }
+        }
+        if words.isEmpty, let list = json["transcription"] as? [[String: Any]] {
+            for item in list {
+                let offsets = item["offsets"] as? [String: Any]
+                if let w = timedWord(text: item["text"], start: offsets?["from"], end: offsets?["to"]) {
+                    words.append(TimedWord(text: w.text, start: w.start / 1000, end: w.end / 1000))
+                }
+            }
+        }
+        return words
     }
 
     private func parseGigaAMTokens(_ output: String) -> [TimedWord] {
