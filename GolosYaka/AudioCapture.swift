@@ -859,13 +859,22 @@ class AudioCapture: NSObject, ObservableObject, AVAudioRecorderDelegate {
     private func saveAudioForNote(id: UUID, sourceURL: URL) {
         let fm = FileManager.default
         guard let audioDir = AppPaths.audioDirectory else { return }
-        let destURL = audioDir.appendingPathComponent("\(id.uuidString).wav")
-        if fm.fileExists(atPath: destURL.path) { try? fm.removeItem(at: destURL) }
-        try? fm.copyItem(at: sourceURL, to: destURL)
+        let compressedURL = audioDir.appendingPathComponent("\(id.uuidString).\(AudioStorage.compressedExtension)")
+        let legacyURL = audioDir.appendingPathComponent("\(id.uuidString).\(AudioStorage.legacyExtension)")
+
+        if AudioStorage.encodeAAC24(from: sourceURL, to: compressedURL) {
+            if fm.fileExists(atPath: legacyURL.path) { try? fm.removeItem(at: legacyURL) }
+            return
+        }
+        // Не удалось сжать — сохраняем как раньше, без потери записи.
+        AppLogger.shared.warn("Storage", "Не удалось закодировать AAC, сохранён WAV", details: id.uuidString)
+        if fm.fileExists(atPath: compressedURL.path) { try? fm.removeItem(at: compressedURL) }
+        if fm.fileExists(atPath: legacyURL.path) { try? fm.removeItem(at: legacyURL) }
+        try? fm.copyItem(at: sourceURL, to: legacyURL)
     }
     
     private func audioFileURL(for id: UUID) -> URL? {
-        AppPaths.audioDirectory?.appendingPathComponent("\(id.uuidString).wav")
+        AudioStorage.url(for: id)
     }
     
     private func timingsFileURL(for id: UUID) -> URL? {
@@ -914,10 +923,32 @@ class AudioCapture: NSObject, ObservableObject, AVAudioRecorderDelegate {
         if playingItemId == id { stopSyncedPlayback() }
         if preloadedPlayerId == id { audioPlayer = nil; preloadedPlayerId = nil }
 
-        guard let audioURL = audioFileURL(for: id),
-              FileManager.default.fileExists(atPath: audioURL.path) else {
+        guard let storedURL = audioFileURL(for: id),
+              FileManager.default.fileExists(atPath: storedURL.path) else {
             completion?(false)
             return
+        }
+
+        // Сжатая запись для распознавания декодируется в PCM WAV на лету.
+        // Воспроизведение при этом работает напрямую через AVAudioPlayer — конвертация не нужна.
+        var decodedWAV: URL?
+        let audioURL: URL
+        if storedURL.pathExtension.lowercased() == AudioStorage.compressedExtension {
+            let temp = FileManager.default.temporaryDirectory
+                .appendingPathComponent("retranscribe_\(id.uuidString).wav")
+            guard AudioStorage.decodeToWAV(from: storedURL, to: temp) else {
+                DispatchQueue.main.async {
+                    self.pipelinePhase = .idle
+                    OverlayPanelManager.shared.showWarning(message: .key("Ошибка чтения файла"))
+                    self.isProcessingFile = false
+                    completion?(false)
+                }
+                return
+            }
+            decodedWAV = temp
+            audioURL = temp
+        } else {
+            audioURL = storedURL
         }
 
         DispatchQueue.main.async {
@@ -931,6 +962,7 @@ class AudioCapture: NSObject, ObservableObject, AVAudioRecorderDelegate {
 
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
             guard let self else { return }
+            defer { if let decodedWAV { try? FileManager.default.removeItem(at: decodedWAV) } }
 
             guard let inputFile = try? AVAudioFile(forReading: audioURL) else {
                 DispatchQueue.main.async {
@@ -2102,10 +2134,13 @@ func checkUpdates(force: Bool = false) {
 
     private func deleteAudioFile(for id: UUID) {
         guard let audioDir = AppPaths.audioDirectory else { return }
-        let fileURL = audioDir.appendingPathComponent("\(id.uuidString).wav")
-        if FileManager.default.fileExists(atPath: fileURL.path) { try? FileManager.default.removeItem(at: fileURL) }
+        let fm = FileManager.default
+        for ext in [AudioStorage.compressedExtension, AudioStorage.legacyExtension] {
+            let fileURL = audioDir.appendingPathComponent("\(id.uuidString).\(ext)")
+            if fm.fileExists(atPath: fileURL.path) { try? fm.removeItem(at: fileURL) }
+        }
         let segURL = audioDir.appendingPathComponent("\(id.uuidString).segments.json")
-        if FileManager.default.fileExists(atPath: segURL.path) { try? FileManager.default.removeItem(at: segURL) }
+        if fm.fileExists(atPath: segURL.path) { try? fm.removeItem(at: segURL) }
     }
 }
 

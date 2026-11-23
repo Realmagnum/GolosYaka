@@ -9,6 +9,7 @@ struct SettingsView: View {
     @ObservedObject var techTerms = TechTermStore.shared
     @ObservedObject var promptStore = PromptStore.shared
     @ObservedObject var logPreferences = LogViewPreferences.shared
+    @ObservedObject var audioStorage = AudioStorageMigrator.shared
     @Environment(\.openWindow) private var openWindow
     @State private var showingClearHistoryAlert = false
     @State private var showingTechTermsSheet = false
@@ -423,6 +424,51 @@ struct SettingsView: View {
 
                 // РАЗДЕЛ 3.5: ИИ-ПРОВАЙДЕР
                 AIProviderSection()
+
+                // РАЗДЕЛ 3.6: ХРАНИЛИЩЕ АУДИО
+                UICard {
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text(LocalizedStringKey("ХРАНИЛИЩЕ АУДИО"))
+                            .font(UIStyleFont.body(size: 11, weight: .bold))
+                            .tracking(1.0)
+                            .foregroundColor(.uiMidGray)
+
+                        HStack {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(LocalizedStringKey("Сжатие архива записей"))
+                                    .font(UIStyleFont.body(size: 13, weight: .medium))
+                                    .foregroundColor(.uiInk)
+                                Text(LocalizedStringKey("AAC 24 кбит/с: примерно в 9 раз меньше места. Оригиналы удаляются только после проверки длительности."))
+                                    .font(UIStyleFont.body(size: 11, weight: .regular))
+                                    .foregroundColor(.uiMidGray)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                            Spacer()
+                            UIOutlineButton(title: LocalizedStringKey("Сжать архив")) {
+                                audioStorage.start()
+                            }
+                            .disabled(audioStorage.isRunning)
+                        }
+
+                        if audioStorage.isRunning {
+                            ProgressView(value: Double(audioStorage.processed),
+                                         total: Double(max(1, audioStorage.total)))
+                            Text(L10n.format("Обработано %lld из %lld · сохранено %.0f МБ",
+                                             Int64(audioStorage.processed),
+                                             Int64(audioStorage.total),
+                                             Double(audioStorage.savedBytes) / 1_048_576))
+                                .font(UIStyleFont.body(size: 11, weight: .regular))
+                                .foregroundColor(.uiMidGray)
+                        } else if audioStorage.total > 0 {
+                            Text(L10n.format("Готово: %lld файлов, ошибок %lld, сохранено %.0f МБ",
+                                             Int64(audioStorage.processed),
+                                             Int64(audioStorage.failed),
+                                             Double(audioStorage.savedBytes) / 1_048_576))
+                                .font(UIStyleFont.body(size: 11, weight: .regular))
+                                .foregroundColor(.uiMidGray)
+                        }
+                    }
+                }
 
                 // РАЗДЕЛ 4: ДАННЫЕ
                 UICard {

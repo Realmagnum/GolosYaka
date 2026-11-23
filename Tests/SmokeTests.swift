@@ -295,4 +295,16 @@ r.expectEqual(LogDisplayMode(rawValue: "window"), .window, "Режим отде�
 r.expectEqual(LogDisplayMode(rawValue: "unknown"), nil, "Неизвестный режим не ломает переключатель")
 r.expectEqual(LogDisplayMode.section.rawValue, "section", "Режим раздела читается из настроек")
 
+// Экономичное хранилище аудио
+do {
+    let id = UUID()
+    let dir = URL(fileURLWithPath: "/tmp/golosyaka-audio-storage-test")
+    let resolved = AudioStorage.url(for: id, in: dir)
+    r.expectEqual(resolved?.lastPathComponent, "\(id.uuidString).wav", "Без сжатого файла используется legacy WAV-путь")
+    r.expectEqual(AudioStorage.audioID(from: resolved!), id, "ID записи восстанавливается из имени файла")
+    r.expect(AudioStorage.audioID(from: URL(fileURLWithPath: "/tmp/not-a-uuid.wav")) == nil, "Некорректное имя файла не ломает миграцию")
+    r.expectEqual(AudioStorage.compressedExtension, "m4a", "Сжатое хранилище — m4a")
+    r.expectEqual(AudioStorage.aacBitrate, 24_000, "AAC 24 кбит/с")
+}
+
 exit(runner.report())
