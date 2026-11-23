@@ -8,8 +8,9 @@ struct SettingsView: View {
     @ObservedObject var hotKey = HotKeySettings.shared
     @ObservedObject var techTerms = TechTermStore.shared
     @ObservedObject var promptStore = PromptStore.shared
+    @ObservedObject var logPreferences = LogViewPreferences.shared
+    @Environment(\.openWindow) private var openWindow
     @State private var showingClearHistoryAlert = false
-    @State private var showingLogsSheet = false
     @State private var showingTechTermsSheet = false
     @State private var showingAddInferenceSheet = false
     @State private var showingPromptManagerSheet = false
@@ -249,12 +250,19 @@ struct SettingsView: View {
                                     .foregroundColor(.uiMidGray)
                             }
                             Spacer()
-                            UIOutlineButton(title: "Открыть") {
-                                showingLogsSheet = true
+                            UIDropdownPicker(
+                                selection: $logPreferences.mode,
+                                options: LogDisplayMode.allCases.map { UIDropdownOption($0.titleKey, value: $0) },
+                                width: 170
+                            )
+                            UIOutlineButton(title: LocalizedStringKey("Открыть")) {
+                                if logPreferences.mode == .window {
+                                    NSApp.activate(ignoringOtherApps: true)
+                                    openWindow(id: "logs")
+                                } else {
+                                    NotificationCenter.default.post(name: .showLogsSection, object: nil)
+                                }
                             }
-                        }
-                        .sheet(isPresented: $showingLogsSheet) {
-                            LogsView().withAppLocale()
                         }
                     }
                 }

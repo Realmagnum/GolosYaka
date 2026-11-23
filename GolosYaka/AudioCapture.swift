@@ -584,7 +584,8 @@ class AudioCapture: NSObject, ObservableObject, AVAudioRecorderDelegate {
                             processedText = clean
                         }
                     case .failure(let error):
-                        AppLogger.shared.warn("AI", "Автоматическая ИИ-обработка не удалась", details: error.localizedDescription)
+                        let config = AIProviderStore.shared.config
+                        AppLogger.shared.warn("AI", "Автоматическая ИИ-обработка не удалась", details: "\(config.baseURL) / \(config.model); причина: \(error.localizedDescription)")
                     }
                     semaphore.signal()
                 }
@@ -1025,7 +1026,8 @@ class AudioCapture: NSObject, ObservableObject, AVAudioRecorderDelegate {
                                 processedText = clean
                             }
                         case .failure(let error):
-                            AppLogger.shared.warn("AI", "Автоматическая ИИ-обработка при повторном распознавании не удалась", details: error.localizedDescription)
+                            let config = AIProviderStore.shared.config
+                            AppLogger.shared.warn("AI", "Автоматическая ИИ-обработка при повторном распознавании не удалась", details: "\(config.baseURL) / \(config.model); причина: \(error.localizedDescription)")
                         }
                         semaphore.signal()
                     }

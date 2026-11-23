@@ -2,7 +2,7 @@ import SwiftUI
 import AppKit
 import UniformTypeIdentifiers
 
-enum MainTab { case history, dashboard, settings }
+enum MainTab { case history, dashboard, logs, settings }
 
 struct NoteSelection: Equatable {
     let noteID: UUID
@@ -723,6 +723,7 @@ struct ContentView: View {
     @ObservedObject var permissions = PermissionManager.shared
     @ObservedObject var promptStore = PromptStore.shared
     @ObservedObject var language = LanguageSettings.shared
+    @ObservedObject var logPreferences = LogViewPreferences.shared
     
     @State private var isSplashFinished = false
     @State private var currentTab: MainTab = .history
@@ -817,6 +818,18 @@ struct ContentView: View {
         }
         .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("OpenAboutModal"))) { _ in
             showAboutSheet = true
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .showLogsSection)) { _ in
+            if logPreferences.mode == .section {
+                withAnimation { currentTab = .logs }
+                searchText = ""
+            }
+        }
+        .onChange(of: logPreferences.mode) { newMode in
+            // Раздел исчез из сайдбара — не оставляем пользователя в пустом табе.
+            if newMode == .window && currentTab == .logs {
+                currentTab = .history
+            }
         }
         .onReceive(NotificationCenter.default.publisher(for: .historyDidClear)) { _ in
             resetAfterHistoryClear()
@@ -958,6 +971,7 @@ struct ContentView: View {
                 switch currentTab {
                 case .history: historyDetailView
                 case .dashboard: DashboardView()
+                case .logs: LogsView(isEmbedded: true).withAppLocale()
                 case .settings: SettingsView()
                 }
             }
@@ -976,6 +990,12 @@ struct ContentView: View {
                 SidebarTabButton(title: "Борд", icon: "chart.bar.fill", isActive: currentTab == .dashboard) {
                     currentTab = .dashboard
                     searchText = ""
+                }
+                if logPreferences.mode == .section {
+                    SidebarTabButton(title: LocalizedStringKey("Логи"), icon: "doc.text.fill", isActive: currentTab == .logs) {
+                        currentTab = .logs
+                        searchText = ""
+                    }
                 }
                 SidebarTabButton(title: "Настройки", icon: "gearshape.fill", isActive: currentTab == .settings) {
                     currentTab = .settings

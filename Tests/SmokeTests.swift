@@ -264,4 +264,35 @@ do {
     r.expectEqual(empty.wpm, 0, "Пустая история — 0 wpm")
 }
 
+// Диагностика ИИ-провайдеров
+do {
+    let timeout = NSError(domain: NSURLErrorDomain, code: NSURLErrorTimedOut, userInfo: nil)
+    let reason = AIService.describeTransportError(timeout)
+    r.expect(reason.contains("тайм-аут"), "Тайм-аут прямо назван в причине сбоя")
+    r.expect(reason.contains("-1001"), "Код NSURLErrorTimedOut сохранён в причине")
+
+    let other = NSError(domain: NSURLErrorDomain, code: NSURLErrorNotConnectedToInternet, userInfo: nil)
+    r.expect(!AIService.describeTransportError(other).contains("тайм-аут"), "Другая сетевая ошибка не выдаётся за тайм-аут")
+
+    let flat = AIService.parseModelIDs(["data": [["id": "gpt-6-luna"], ["id": "gemini-3.5"]]])
+    r.expectEqual(flat, ["gpt-6-luna", "gemini-3.5"], "Список моделей из data[].id")
+    let nested = AIService.parseModelIDs(["models": [["name": "assistant"]]])
+    r.expectEqual(nested, ["assistant"], "Список моделей из models[].name")
+    r.expect(AIService.parseModelIDs(["data": []]).isEmpty, "Пустой список моделей")
+
+    let modelsFail = AIProviderCheckStage(kind: .models, ok: false, elapsedMs: 15, detail: "HTTP 404")
+    let chatOK = AIProviderCheckStage(kind: .chat, ok: true, elapsedMs: 1200, detail: "генерация 4 симв.")
+    let check = AIProviderCheck(baseURL: "https://example.invalid/v1", model: "m", stages: [modelsFail, chatOK])
+    r.expect(check.isUsable, "Провайдер годен, если работает чат, даже без /models")
+    r.expect(check.technicalSummary.contains("models: fail"), "В сводке виден сбой /models")
+    r.expect(check.technicalSummary.contains("chat: ok"), "В сводке виден успех чата")
+    let badChat = AIProviderCheck(baseURL: "x", model: "m", stages: [modelsFail, AIProviderCheckStage(kind: .chat, ok: false, elapsedMs: 15000, detail: "тайм-аут")])
+    r.expect(!badChat.isUsable, "Провайдер не годен при сбое чата")
+}
+
+// Режим отображения логов
+r.expectEqual(LogDisplayMode(rawValue: "window"), .window, "Режим отдельного окна читается из настроек")
+r.expectEqual(LogDisplayMode(rawValue: "unknown"), nil, "Неизвестный режим не ломает переключатель")
+r.expectEqual(LogDisplayMode.section.rawValue, "section", "Режим раздела читается из настроек")
+
 exit(runner.report())

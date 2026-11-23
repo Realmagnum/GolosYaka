@@ -119,6 +119,14 @@ struct GolosYakaApp: App {
         }
 
         .defaultSize(width: 990, height: 710)
+
+        // Отдельное окно логов: открывается из Настроек, когда выбран режим «Отдельное окно».
+        Window(L10n.tr("Логи приложения"), id: "logs") {
+            LogsView()
+                .withAppLocale()
+                .frame(minWidth: 620, minHeight: 480)
+        }
+        .defaultSize(width: 720, height: 560)
         
         MenuBarExtra(L10n.tr("ГолосЯка"), systemImage: "waveform") {
             MenuBarMenu()

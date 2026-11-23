@@ -1,10 +1,45 @@
 import SwiftUI
 
+/// Где показывать логи: отдельным разделом главного окна или собственным окном.
+/// Это UI-состояние, не часть агрегата заметки, поэтому живёт в UserDefaults.
+enum LogDisplayMode: String, CaseIterable, Identifiable {
+    case section
+    case window
+
+    var id: String { rawValue }
+
+    var titleKey: LocalizedStringKey {
+        switch self {
+        case .section: return LocalizedStringKey("Раздел в главном окне")
+        case .window: return LocalizedStringKey("Отдельное окно")
+        }
+    }
+}
+
+final class LogViewPreferences: ObservableObject {
+    static let shared = LogViewPreferences()
+
+    @Published var mode: LogDisplayMode {
+        didSet { UserDefaults.standard.set(mode.rawValue, forKey: "ui.logs.displayMode") }
+    }
+
+    private init() {
+        let saved = UserDefaults.standard.string(forKey: "ui.logs.displayMode") ?? ""
+        mode = LogDisplayMode(rawValue: saved) ?? .section
+    }
+}
+
+extension Notification.Name {
+    static let showLogsSection = Notification.Name("ShowLogsSection")
+}
+
 struct LogsView: View {
     @ObservedObject var logger = AppLogger.shared
     @State private var showInfo = true
     @State private var showWarn = true
     @State private var showError = true
+    /// В разделе главного окна кнопка «Закрыть» не нужна — закрывается вкладка.
+    var isEmbedded = false
     @Environment(\.dismiss) private var dismiss
 
     private var filtered: [LogEntry] {
@@ -28,7 +63,7 @@ struct LogsView: View {
             if filtered.isEmpty {
                 VStack(spacing: 8) {
                     Spacer()
-                    Text("Пока нет записей")
+                    Text(LocalizedStringKey("Пока нет записей"))
                         .font(UIStyleFont.body(size: 13, weight: .medium))
                         .foregroundColor(.uiMidGray)
                     Spacer()
@@ -53,28 +88,29 @@ struct LogsView: View {
                 .padding(16)
         }
         .background(Color.uiPaper)
-        .frame(minWidth: 560, minHeight: 440)
+        .frame(minWidth: isEmbedded ? nil : 560, minHeight: isEmbedded ? nil : 440)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     private var header: some View {
         HStack(spacing: 12) {
-            Text("Логи приложения")
+            Text(LocalizedStringKey("Логи приложения"))
                 .font(UIStyleFont.display(size: 16, weight: .semibold))
                 .foregroundColor(.uiInk)
             Spacer()
 
             HStack(spacing: 6) {
                 levelButton(tint: .uiInkSoft, symbol: "i.circle",
-                            isOn: showInfo, help: "Информация") { showInfo.toggle() }
+                            isOn: showInfo, help: LocalizedStringKey("Информация")) { showInfo.toggle() }
                 levelButton(tint: .uiWarn, symbol: "exclamationmark.triangle",
-                            isOn: showWarn, help: "Предупреждения") { showWarn.toggle() }
+                            isOn: showWarn, help: LocalizedStringKey("Предупреждения")) { showWarn.toggle() }
                 levelButton(tint: .uiEmber, symbol: "xmark.octagon",
-                            isOn: showError, help: "Ошибки") { showError.toggle() }
+                            isOn: showError, help: LocalizedStringKey("Ошибки")) { showError.toggle() }
             }
         }
     }
 
-    private func levelButton(tint: Color, symbol: String, isOn: Bool, help: String, action: @escaping () -> Void) -> some View {
+    private func levelButton(tint: Color, symbol: String, isOn: Bool, help: LocalizedStringKey, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Image(systemName: symbol)
                 .font(.system(size: 13, weight: .semibold))
@@ -90,11 +126,13 @@ struct LogsView: View {
 
     private var footer: some View {
         HStack(spacing: 10) {
-            UIOutlineButton(title: "Копировать") { copyLogs() }
-            UIOutlineButton(title: "Очистить") { logger.clear() }
-            UIOutlineButton(title: "Открыть файл") { openFile() }
+            UIOutlineButton(title: LocalizedStringKey("Копировать")) { copyLogs() }
+            UIOutlineButton(title: LocalizedStringKey("Очистить")) { logger.clear() }
+            UIOutlineButton(title: LocalizedStringKey("Открыть файл")) { openFile() }
             Spacer()
-            UIPrimaryButton(title: "Закрыть") { dismiss() }
+            if !isEmbedded {
+                UIOutlineButton(title: LocalizedStringKey("Закрыть")) { dismiss() }
+            }
         }
     }
 

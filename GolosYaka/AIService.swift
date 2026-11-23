@@ -170,6 +170,52 @@ enum AIError: LocalizedError {
     }
 }
 
+/// Один этап проверки провайдера. Данные, а не готовая строка: UI сам решает,
+/// что показать пользователю, а логи получают полную техническую причину.
+struct AIProviderCheckStage: Equatable {
+    enum Kind: String { case models, chat }
+
+    let kind: Kind
+    let ok: Bool
+    let elapsedMs: Int
+    let detail: String
+    var modelIDs: [String] = []
+
+    var technicalSummary: String {
+        "\(kind.rawValue): \(ok ? "ok" : "fail") \(elapsedMs) мс — \(detail)"
+    }
+}
+
+struct AIProviderCheck: Equatable {
+    let baseURL: String
+    let model: String
+    let stages: [AIProviderCheckStage]
+
+    var modelsStage: AIProviderCheckStage? { stages.first { $0.kind == .models } }
+    var chatStage: AIProviderCheckStage? { stages.first { $0.kind == .chat } }
+
+    /// Годен ли провайдер для реальной работы: /models может отсутствовать,
+    /// а вот /chat/completions с выбранной моделью обязателен.
+    var isUsable: Bool { chatStage?.ok == true }
+
+    var technicalSummary: String {
+        stages.map(\.technicalSummary).joined(separator: " | ")
+    }
+}
+
+enum AIConnectionTestPhase: Equatable {
+    case idle, models, chat, finished
+
+    var statusKey: String {
+        switch self {
+        case .idle: return ""
+        case .models: return "Проверка списка моделей…"
+        case .chat: return "Проверка генерации…"
+        case .finished: return ""
+        }
+    }
+}
+
 final class AIProviderStore: ObservableObject {
     static let shared = AIProviderStore()
 
@@ -226,12 +272,26 @@ final class AIProviderStore: ObservableObject {
         return 4096
     }
 
+    private static func sortedModels(_ names: [String]) -> [String] {
+        names.sorted { $0.localizedCaseInsensitiveCompare($1) == .orderedAscending }
+    }
+
+    /// true, пока текущий ИИ-запрос обслуживается резервным провайдером.
+    /// Используется плавающим виджетом, чтобы показать это пользователю.
+    @Published var isUsingFailover = false
+    @Published var lastFailoverReason: String?
+
     @Published var isTesting = false
+    @Published var testPhase: AIConnectionTestPhase = .idle
     @Published var testResultMessage: LocalizedMessage?
     var testResult: String? { testResultMessage?.localized }
     @Published var testOK = false
     @Published var installedModels: [String] = []
     @Published var isLoadingModels = false
+    /// Модели, полученные из /models текущего провайдера (не локальные Ollama).
+    @Published var remoteModels: [String] = []
+    @Published var isLoadingRemoteModels = false
+    @Published var modelsLoadError: LocalizedMessage?
     @Published var customPresets: [AIProviderPreset] = []
     @Published var customDisplayNames: [String: String] = [:]
 
@@ -571,7 +631,7 @@ final class AIProviderStore: ObservableObject {
                 self.isLoadingModels = false
                 switch result {
                 case .success(let models):
-                    self.installedModels = models.sorted()
+                    self.installedModels = Self.sortedModels(models)
                 case .failure:
                     self.installedModels = []
                 }
@@ -585,11 +645,13 @@ final class AIProviderStore: ObservableObject {
 
         if cleanURL.isEmpty {
             testOK = false
+            testPhase = .finished
             testResultMessage = .key("Заполните Base URL")
             return
         }
         if cleanModel.isEmpty {
             testOK = false
+            testPhase = .finished
             testResultMessage = .key("Укажите модель")
             return
         }
@@ -597,26 +659,80 @@ final class AIProviderStore: ObservableObject {
         let trimmedURL = cleanURL.lowercased()
         if trimmedURL.hasPrefix("http://") && !allowInsecureHTTP {
             testOK = false
+            testPhase = .finished
             testResultMessage = .key("HTTP запрещён. Включите разрешение HTTP или используйте HTTPS.")
             return
         }
 
         isTesting = true
+        testPhase = .models
         testResultMessage = nil
         testOK = false
-        AIService.shared.test(using: draftConfig) { [weak self] result in
+        let checkedConfig = draftConfig
+        AIService.shared.checkProvider(using: checkedConfig) { [weak self] result in
             DispatchQueue.main.async {
                 guard let self else { return }
                 self.isTesting = false
+                self.testPhase = .finished
                 switch result {
-                case .success:
-                    self.testOK = true
-                    self.testResultMessage = .key("Подключено")
-                    AppLogger.shared.info("AI", "Проверка подключения успешна", details: "\(self.baseURL) / \(self.model)")
+                case .success(let check):
+                    if let models = check.modelsStage, models.ok {
+                        self.remoteModels = Self.sortedModels(models.modelIDs)
+                    }
+                    if check.isUsable {
+                        self.testOK = true
+                        AIService.shared.clearProviderFailure(checkedConfig)
+                        if let models = check.modelsStage, !models.ok {
+                            self.testResultMessage = .formatted(key: "Подключено, но список моделей недоступен: %@", arg: models.detail)
+                            AppLogger.shared.warn("AI", "Проверка: чат работает, /models недоступен", details: check.technicalSummary)
+                        } else {
+                            self.testResultMessage = .key("Подключено")
+                            AppLogger.shared.info("AI", "Проверка провайдера успешна", details: check.technicalSummary)
+                        }
+                    } else {
+                        self.testOK = false
+                        let reason = check.chatStage?.detail ?? L10n.tr("Нет ответа от сервера")
+                        self.testResultMessage = .formatted(key: "Проверка не пройдена: %@", arg: reason)
+                        AppLogger.shared.error("AI", "Проверка провайдера выявила сбой чата", details: check.technicalSummary)
+                    }
                 case .failure(let error):
                     self.testOK = false
-                    self.testResultMessage = .raw(error.localizedDescription)
-                    AppLogger.shared.warn("AI", "Проверка подключения не удалась", details: error.localizedDescription)
+                    self.testResultMessage = .formatted(key: "Проверка не пройдена: %@", arg: error.localizedDescription)
+                    AppLogger.shared.error("AI", "Проверка провайдера не выполнена", details: error.localizedDescription)
+                }
+            }
+        }
+    }
+
+    /// Загрузить список моделей с /models текущего провайдера. Ошибка показывает точную
+    /// причину (.HTTP-код / текст сервера / тайм-аут), а не пустой список.
+    func fetchRemoteModels() {
+        guard !isLoadingRemoteModels else { return }
+        let cleanURL = baseURL.trimmingCharacters(in: .whitespaces)
+        if cleanURL.isEmpty {
+            modelsLoadError = .key("Заполните Base URL")
+            return
+        }
+        isLoadingRemoteModels = true
+        modelsLoadError = nil
+        let checkedConfig = draftConfig
+        AIService.shared.listModels(using: checkedConfig) { [weak self] result in
+            DispatchQueue.main.async {
+                guard let self else { return }
+                self.isLoadingRemoteModels = false
+                switch result {
+                case .success(let names):
+                    self.remoteModels = Self.sortedModels(names)
+                    if names.isEmpty {
+                        self.modelsLoadError = .key("Сервер вернул пустой список моделей")
+                        AppLogger.shared.warn("AI", "Список моделей пуст", details: "\(checkedConfig.baseURL) / \(checkedConfig.model)")
+                    } else {
+                        AppLogger.shared.info("AI", "Список моделей загружен", details: "\(checkedConfig.baseURL), моделей: \(names.count)")
+                    }
+                case .failure(let error):
+                    self.remoteModels = []
+                    self.modelsLoadError = .formatted(key: "Не удалось загрузить модели: %@", arg: error.localizedDescription)
+                    AppLogger.shared.error("AI", "Загрузка списка моделей не удалась", details: error.localizedDescription)
                 }
             }
         }
@@ -628,12 +744,54 @@ final class AIService {
 
     private let session: URLSession
 
+    /// Память о недавно упавших провайдерах. Без неё каждый запрос к мёртвому
+    /// основному платит полный тайм-аут, и только потом уходит в failover.
+    private static let failureCooldown: TimeInterval = 5 * 60
+    private let healthLock = NSLock()
+    private var providerFailures: [String: (until: Date, reason: String)] = [:]
+
     private init() {
         let cfg = URLSessionConfiguration.default
         cfg.timeoutIntervalForRequest = 120
         cfg.timeoutIntervalForResource = 300
         cfg.waitsForConnectivity = false
         session = URLSession(configuration: cfg)
+    }
+
+    private func healthKey(_ config: AIProviderConfig) -> String {
+        "\(config.baseURL)|\(config.model)"
+    }
+
+    private func activeFailure(for config: AIProviderConfig) -> (until: Date, reason: String)? {
+        healthLock.lock()
+        defer { healthLock.unlock() }
+        guard let failure = providerFailures[healthKey(config)], failure.until > Date() else { return nil }
+        return failure
+    }
+
+    private func markFailed(_ config: AIProviderConfig, reason: String) {
+        healthLock.lock()
+        providerFailures[healthKey(config)] = (Date().addingTimeInterval(Self.failureCooldown), reason)
+        healthLock.unlock()
+    }
+
+    func clearProviderFailure(_ config: AIProviderConfig) {
+        healthLock.lock()
+        providerFailures.removeValue(forKey: healthKey(config))
+        healthLock.unlock()
+    }
+
+    /// Состояние «сейчас работает резерв» читает плавающий виджет.
+    private func setFailoverInUse(_ value: Bool, reason: String? = nil) {
+        DispatchQueue.main.async {
+            let store = AIProviderStore.shared
+            store.isUsingFailover = value
+            if let reason { store.lastFailoverReason = reason }
+        }
+    }
+
+    private static func elapsedMs(since start: Date) -> Int {
+        Int(Date().timeIntervalSince(start) * 1000)
     }
 
     private func buildUniversalPayload(
@@ -824,6 +982,7 @@ final class AIService {
                 // Проверяем автоматический Failover на резервного провайдера
                 if let backup = AIProviderStore.shared.failoverConfig, backup.baseURL != config.baseURL || backup.model != config.model {
                     if self?.shouldTriggerFailover(for: error) == true {
+                        self?.setFailoverInUse(true, reason: error.localizedDescription)
                         AppLogger.shared.warn("AI", "Основной провайдер недоступен, автоматическое переключение на резервный (Failover)", details: "\(backup.baseURL) / \(backup.model)")
                         _ = self?.chatStream(
                             messages: messages,
@@ -852,13 +1011,26 @@ final class AIService {
         messages: [AIChatMessage],
         using config: AIProviderConfig,
         promptLength: Int? = nil,
-        timeout: TimeInterval = 25,
+        timeout: TimeInterval = 15,
         isFallback: Bool = false,
         handle: AICancelableRequest? = nil,
         completion: @escaping (Result<String, AIError>) -> Void
     ) -> AICancelableRequest? {
         let requestHandle = handle ?? AICancelableRequest()
         if requestHandle.isCancelled { return requestHandle }
+        let startedAt = Date()
+        // Каждый новый запрос начинается с основного — сбрасываем индикатор резерва.
+        if !isFallback { setFailoverInUse(false) }
+
+        // Если основной недавно упал, не ждём ещё один полный тайм-аут — сразу резерв.
+        if !isFallback,
+           let backup = AIProviderStore.shared.failoverConfig,
+           backup.baseURL != config.baseURL || backup.model != config.model,
+           let failure = activeFailure(for: config) {
+            AppLogger.shared.warn("AI", "Основной провайдер в карантине, запрос сразу уходит в failover", details: "\(config.baseURL) / \(config.model); причина: \(failure.reason); резерв: \(backup.baseURL) / \(backup.model)")
+            setFailoverInUse(true, reason: failure.reason)
+            return chat(messages: messages, using: backup, promptLength: promptLength, timeout: timeout, handle: requestHandle, completion: completion)
+        }
 
         guard let url = url(config.baseURL, path: "chat/completions") else {
             completion(.failure(.invalidURL))
@@ -889,7 +1061,7 @@ final class AIService {
         }
         request.httpBody = data
 
-        AppLogger.shared.info("AI", isFallback ? "Запрос к модели (fallback)" : "Запрос к модели", details: "\(config.baseURL) / \(config.model), \(payloadInfo.debugDesc)")
+        AppLogger.shared.info("AI", isFallback ? "Запрос к модели (fallback)" : "Запрос к модели", details: "\(config.baseURL) / \(config.model), timeout=\(Int(timeout))с, \(payloadInfo.debugDesc)")
 
         let task = session.dataTask(with: request) { [weak self] data, response, error in
             if requestHandle.isCancelled { return }
@@ -898,10 +1070,16 @@ final class AIService {
                     AppLogger.shared.info("AI", "Запрос к модели отменён пользователем")
                     return
                 }
+                let nsError = error as NSError
+                let elapsed = Self.elapsedMs(since: startedAt)
+                let reason = "\(nsError.domain) code=\(nsError.code): \(error.localizedDescription), \(elapsed) мс"
+                AppLogger.shared.error("AI", "Сетевой сбой chat-completions", details: "\(config.baseURL) / \(config.model); \(reason)")
                 let aiError = AIError.network(error.localizedDescription)
                 if let backup = AIProviderStore.shared.failoverConfig, backup.baseURL != config.baseURL || backup.model != config.model {
                     if self?.shouldTriggerFailover(for: aiError) == true {
-                        AppLogger.shared.warn("AI", "Основной провайдер недоступен (тайм-аут/сеть), переключение на резервный (Failover)", details: "\(backup.baseURL) / \(backup.model)")
+                        self?.markFailed(config, reason: reason)
+                        self?.setFailoverInUse(true, reason: reason)
+                        AppLogger.shared.warn("AI", "Основной провайдер недоступен (тайм-аут/сеть), переключение на резервный (Failover)", details: "причина: \(reason); основной: \(config.baseURL) / \(config.model); резерв: \(backup.baseURL) / \(backup.model)")
                         _ = self?.chat(messages: messages, using: backup, promptLength: promptLength, timeout: timeout, handle: requestHandle, completion: completion)
                         return
                     }
@@ -934,10 +1112,14 @@ final class AIService {
                 }
 
                 let httpErr = AIError.http(http.statusCode, errDetail)
+                let reason = "HTTP \(http.statusCode): \(errDetail), \(Self.elapsedMs(since: startedAt)) мс"
+                AppLogger.shared.error("AI", "Ошибка ответа chat-completions", details: "\(config.baseURL) / \(config.model); \(reason)")
                 // Failover при 401, 403, 404, 429, 5xx
                 if let backup = AIProviderStore.shared.failoverConfig, backup.baseURL != config.baseURL || backup.model != config.model {
                     if self?.shouldTriggerFailover(for: httpErr) == true {
-                        AppLogger.shared.warn("AI", "Сбой основного провайдера (\(http.statusCode)), переключение на резервный (Failover)", details: "\(backup.baseURL) / \(backup.model)")
+                        self?.markFailed(config, reason: reason)
+                        self?.setFailoverInUse(true, reason: reason)
+                        AppLogger.shared.warn("AI", "Сбой основного провайдера (\(http.statusCode)), переключение на резервный (Failover)", details: "причина: \(reason); основной: \(config.baseURL) / \(config.model); резерв: \(backup.baseURL) / \(backup.model)")
                         _ = self?.chat(messages: messages, using: backup, promptLength: promptLength, timeout: timeout, handle: requestHandle, completion: completion)
                         return
                     }
@@ -947,6 +1129,7 @@ final class AIService {
                 return
             }
             guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+                AppLogger.shared.error("AI", "Ответ chat-completions не является JSON", details: "\(config.baseURL) / \(config.model); \(Self.elapsedMs(since: startedAt)) мс")
                 completion(.failure(.parse("не JSON")))
                 return
             }
@@ -955,8 +1138,13 @@ final class AIService {
                   let message = first["message"] as? [String: Any],
                   let content = message["content"] as? String,
                   !content.isEmpty else {
+                AppLogger.shared.error("AI", "Модель вернула пустой ответ", details: "\(config.baseURL) / \(config.model); \(Self.elapsedMs(since: startedAt)) мс")
                 completion(.failure(.emptyResponse))
                 return
+            }
+            self?.clearProviderFailure(config)
+            if isFallback {
+                AppLogger.shared.info("AI", "Запрос выполнен через резервный провайдер", details: "\(config.baseURL) / \(config.model); \(Self.elapsedMs(since: startedAt)) мс")
             }
             completion(.success(content))
         }
@@ -978,75 +1166,148 @@ final class AIService {
         }
     }
 
+    private static let checkTimeout: TimeInterval = 15
+
+    /// Полная проверка: и /models, и реальный /chat/completions с выбранной моделью.
+    /// Раньше тест ограничивался /models — поэтому «Подключено» показывалось даже
+    /// когда чат с моделью висел до тайм-аута (ровно так проявлялся наш сбой).
+    func checkProvider(using config: AIProviderConfig, completion: @escaping (Result<AIProviderCheck, AIError>) -> Void) {
+        var stages: [AIProviderCheckStage] = []
+        checkModelsEndpoint(config) { modelsStage in
+            stages.append(modelsStage)
+            self.checkChatEndpoint(config) { chatStage in
+                stages.append(chatStage)
+                let check = AIProviderCheck(baseURL: config.baseURL, model: config.model, stages: stages)
+                AppLogger.shared.info("AI", "Диагностика провайдера завершена", details: check.technicalSummary)
+                completion(.success(check))
+            }
+        }
+    }
+
+    /// Обратная совместимость: старый тест теперь считает подключение успешным
+    /// только если проходит и генерация, а не один /models.
     func test(using config: AIProviderConfig, completion: @escaping (Result<Void, AIError>) -> Void) {
+        checkProvider(using: config) { result in
+            switch result {
+            case .success(let check):
+                if check.isUsable {
+                    completion(.success(()))
+                } else {
+                    completion(.failure(.network(check.chatStage?.detail ?? "нет ответа от сервера")))
+                }
+            case .failure(let error):
+                completion(.failure(error))
+            }
+        }
+    }
+
+    private func checkModelsEndpoint(_ config: AIProviderConfig, then: @escaping (AIProviderCheckStage) -> Void) {
+        let started = Date()
         guard let url = url(config.baseURL, path: "models") else {
-            completion(.failure(.invalidURL))
+            then(.init(kind: .models, ok: false, elapsedMs: 0, detail: "некорректный URL /models"))
             return
         }
         var request = URLRequest(url: url)
         request.httpMethod = "GET"
-        request.timeoutInterval = 15
+        request.timeoutInterval = Self.checkTimeout
         if !config.apiKey.isEmpty {
             request.setValue("Bearer \(config.apiKey)", forHTTPHeaderField: "Authorization")
         }
-        session.dataTask(with: request) { [weak self] data, response, error in
+        session.dataTask(with: request) { data, response, error in
+            let elapsed = Self.elapsedMs(since: started)
+            let stage: AIProviderCheckStage
             if let error {
-                completion(.failure(.network(error.localizedDescription)))
-                return
-            }
-            guard let http = response as? HTTPURLResponse else {
-                completion(.failure(.network("нет HTTP-ответа")))
-                return
-            }
-            if (200..<300).contains(http.statusCode) {
-                completion(.success(()))
-            } else if http.statusCode == 404 {
-                // Если сервер/прокси (например, CPAMP / Chained Model Proxy) не реализует GET /models,
-                // проверяем доступность через легковесный POST /chat/completions с 1 токеном
-                self?.testViaChatCompletions(using: config, completion: completion)
+                stage = .init(kind: .models, ok: false, elapsedMs: elapsed, detail: Self.describeTransportError(error))
+            } else if let http = response as? HTTPURLResponse, !(200..<300).contains(http.statusCode) {
+                let detail = data.flatMap(Self.extractError) ?? "HTTP \(http.statusCode)"
+                stage = .init(kind: .models, ok: false, elapsedMs: elapsed, detail: "HTTP \(http.statusCode): \(detail)")
+            } else if let data, let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+                let ids = Self.parseModelIDs(json)
+                stage = .init(kind: .models, ok: true, elapsedMs: elapsed,
+                              detail: ids.isEmpty ? "список моделей пуст" : "моделей: \(ids.count)",
+                              modelIDs: ids)
             } else {
-                let message = (data.flatMap { Self.extractError(from: $0) }) ?? "HTTP \(http.statusCode)"
-                completion(.failure(.http(http.statusCode, message)))
+                stage = .init(kind: .models, ok: false, elapsedMs: elapsed, detail: "не удалось разобрать ответ /models")
             }
+            AppLogger.shared.info("AI", "Диагностика /models: \(stage.ok ? "OK" : "сбой")", details: stage.technicalSummary)
+            then(stage)
         }.resume()
     }
 
-    private func testViaChatCompletions(using config: AIProviderConfig, completion: @escaping (Result<Void, AIError>) -> Void) {
+    private func checkChatEndpoint(_ config: AIProviderConfig, then: @escaping (AIProviderCheckStage) -> Void) {
+        let started = Date()
         guard let url = url(config.baseURL, path: "chat/completions") else {
-            completion(.failure(.invalidURL))
+            then(.init(kind: .chat, ok: false, elapsedMs: 0, detail: "некорректный URL /chat/completions"))
             return
         }
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
-        request.timeoutInterval = 15
+        request.timeoutInterval = Self.checkTimeout
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         if !config.apiKey.isEmpty {
             request.setValue("Bearer \(config.apiKey)", forHTTPHeaderField: "Authorization")
         }
-
-        let testPayload: [String: Any] = [
-            "model": config.model.isEmpty ? "default" : config.model,
-            "messages": [["role": "user", "content": "ping"]],
-            "max_tokens": 1
-        ]
-        request.httpBody = try? JSONSerialization.data(withJSONObject: testPayload)
+        // Минимальный совместимый payload: проверяем именно модель и доступность генерации.
+        let payload = buildUniversalPayload(
+            messages: [AIChatMessage(role: "user", content: "ping")],
+            config: config,
+            promptLength: 4,
+            stream: false,
+            isFallback: true
+        )
+        guard let body = payload.data else {
+            then(.init(kind: .chat, ok: false, elapsedMs: 0, detail: "не удалось собрать запрос"))
+            return
+        }
+        request.httpBody = body
 
         session.dataTask(with: request) { data, response, error in
+            let elapsed = Self.elapsedMs(since: started)
+            let stage: AIProviderCheckStage
             if let error {
-                completion(.failure(.network(error.localizedDescription)))
-                return
-            }
-            guard let http = response as? HTTPURLResponse else {
-                completion(.failure(.network("нет HTTP-ответа")))
-                return
-            }
-            if (200..<300).contains(http.statusCode) {
-                completion(.success(()))
+                stage = .init(kind: .chat, ok: false, elapsedMs: elapsed, detail: Self.describeTransportError(error))
+            } else if let http = response as? HTTPURLResponse, !(200..<300).contains(http.statusCode) {
+                let detail = data.flatMap(Self.extractError) ?? "HTTP \(http.statusCode)"
+                stage = .init(kind: .chat, ok: false, elapsedMs: elapsed, detail: "HTTP \(http.statusCode): \(detail)")
+            } else if let data,
+                      let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                      let choices = json["choices"] as? [[String: Any]],
+                      let first = choices.first,
+                      let message = first["message"] as? [String: Any],
+                      let text = message["content"] as? String,
+                      !text.isEmpty {
+                stage = .init(kind: .chat, ok: true, elapsedMs: elapsed, detail: "генерация \(text.count) симв.")
             } else {
-                let message = (data.flatMap { Self.extractError(from: $0) }) ?? "HTTP \(http.statusCode)"
-                completion(.failure(.http(http.statusCode, message)))
+                stage = .init(kind: .chat, ok: false, elapsedMs: elapsed, detail: "пустой или невалидный ответ")
             }
+            if stage.ok {
+                AppLogger.shared.info("AI", "Диагностика /chat/completions: OK", details: stage.technicalSummary)
+            } else {
+                AppLogger.shared.error("AI", "Диагностика /chat/completions: сбой", details: stage.technicalSummary)
+            }
+            then(stage)
         }.resume()
+    }
+
+    /// Тайм-аут URLSession отделяем от прочих сетевых ошибок — это главная
+    /// причина «зависания» этапа ИИ, и пользователь должен видеть именно её.
+    static func describeTransportError(_ error: Error) -> String {
+        let ns = error as NSError
+        if ns.code == NSURLErrorTimedOut {
+            return "тайм-аут (code=\(ns.code)): \(error.localizedDescription)"
+        }
+        return "\(ns.domain) code=\(ns.code): \(error.localizedDescription)"
+    }
+
+    static func parseModelIDs(_ json: [String: Any]) -> [String] {
+        if let items = json["data"] as? [[String: Any]] {
+            let ids = items.compactMap { $0["id"] as? String }
+            if !ids.isEmpty { return ids }
+        }
+        if let items = json["models"] as? [[String: Any]] {
+            return items.compactMap { $0["name"] as? String }
+        }
+        return []
     }
 
     func listModels(using config: AIProviderConfig, completion: @escaping (Result<[String], AIError>) -> Void) {
@@ -1062,25 +1323,24 @@ final class AIService {
         }
         session.dataTask(with: request) { data, response, error in
             if let error {
-                completion(.failure(.network(error.localizedDescription)))
+                let reason = Self.describeTransportError(error)
+                AppLogger.shared.error("AI", "Список моделей: сетевая ошибка", details: "\(config.baseURL); \(reason)")
+                completion(.failure(.network(reason)))
                 return
             }
             guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode), let data else {
-                completion(.failure(.emptyResponse))
+                let status = (response as? HTTPURLResponse)?.statusCode ?? 0
+                let detail = data.flatMap(Self.extractError) ?? "HTTP \(status)"
+                AppLogger.shared.error("AI", "Список моделей: ошибка ответа", details: "\(config.baseURL); \(detail)")
+                completion(.failure(.http(status, detail)))
                 return
             }
             guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+                AppLogger.shared.error("AI", "Список моделей: не JSON", details: config.baseURL)
                 completion(.failure(.parse("не JSON")))
                 return
             }
-            var names: [String] = []
-            if let dataArr = json["data"] as? [[String: Any]] {
-                names = dataArr.compactMap { $0["id"] as? String }
-            }
-            if names.isEmpty, let models = json["models"] as? [[String: Any]] {
-                names = models.compactMap { $0["name"] as? String }
-            }
-            completion(.success(names))
+            completion(.success(Self.parseModelIDs(json)))
         }.resume()
     }
 

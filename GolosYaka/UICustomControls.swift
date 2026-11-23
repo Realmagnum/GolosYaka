@@ -146,7 +146,60 @@ private struct DropdownRow {
 private struct DropdownList: View {
     let width: CGFloat
     let rows: [DropdownRow]
+    /// nil — старый режим (короткие меню); число — прокручиваемый список с шапкой/подвалом.
+    var maxHeight: CGFloat? = nil
 
+    @State private var canScrollUp = false
+    @State private var canScrollDown = false
+
+    var body: some View {
+        Group {
+            if maxHeight != nil {
+                DropdownScroller(rows: rows, rowWidth: width - 14,
+                                 contentHeight: Self.contentHeight(rows),
+                                 canScrollUp: $canScrollUp, canScrollDown: $canScrollDown)
+            } else {
+                DropdownRows(rows: rows)
+            }
+        }
+        .frame(width: width, alignment: .leading)
+        .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Color.uiPaper))
+        .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).stroke(Color.uiHairline, lineWidth: 1))
+        .overlay(alignment: .top) {
+            if canScrollUp { scrollIndicator(up: true) }
+        }
+        .overlay(alignment: .bottom) {
+            if canScrollDown { scrollIndicator(up: false) }
+        }
+        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+    }
+
+    static func contentHeight(_ rows: [DropdownRow]) -> CGFloat {
+        rows.reduce(CGFloat(12)) { $0 + ($1.isDivider ? 9 : 30) }
+    }
+
+    private func scrollIndicator(up: Bool) -> some View {
+        HStack {
+            Spacer()
+            Image(systemName: up ? "chevron.up" : "chevron.down")
+                .font(.system(size: 10, weight: .bold))
+                .foregroundColor(.uiMidGray)
+            Spacer()
+        }
+        .frame(height: 22)
+        .background(
+            LinearGradient(
+                colors: up ? [Color.uiPaper, Color.uiPaper.opacity(0)]
+                           : [Color.uiPaper.opacity(0), Color.uiPaper],
+                startPoint: .top, endPoint: .bottom
+            )
+        )
+        .allowsHitTesting(false)
+    }
+}
+
+private struct DropdownRows: View {
+    let rows: [DropdownRow]
     var body: some View {
         VStack(spacing: 0) {
             ForEach(rows.indices, id: \.self) { i in
@@ -159,10 +212,80 @@ private struct DropdownList: View {
             }
         }
         .padding(.vertical, 6)
-        .frame(width: width, alignment: .leading)
-        .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Color.uiPaper))
-        .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).stroke(Color.uiHairline, lineWidth: 1))
-        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+    }
+}
+
+/// Настоящий NSScrollView с legacy-скроллбаром: системный overlay-скроллбар
+/// на больших списках легко не заметить, а пользователю нужно видеть, что есть ещё строки.
+private struct DropdownScroller: NSViewRepresentable {
+    let rows: [DropdownRow]
+    let rowWidth: CGFloat
+    let contentHeight: CGFloat
+    @Binding var canScrollUp: Bool
+    @Binding var canScrollDown: Bool
+
+    func makeCoordinator() -> Coordinator { Coordinator(up: $canScrollUp, down: $canScrollDown) }
+
+    func makeNSView(context: Context) -> NSScrollView {
+        let hosting = NSHostingView(rootView: AnyView(DropdownRows(rows: rows).frame(width: rowWidth)))
+        hosting.frame = NSRect(x: 0, y: 0, width: rowWidth, height: contentHeight)
+
+        let scroll = NSScrollView()
+        scroll.documentView = hosting
+        scroll.hasVerticalScroller = true
+        scroll.hasHorizontalScroller = false
+        scroll.scrollerStyle = .legacy
+        scroll.autohidesScrollers = true
+        scroll.drawsBackground = false
+        scroll.backgroundColor = .clear
+        scroll.verticalScrollElasticity = .none
+        scroll.horizontalScrollElasticity = .none
+        scroll.contentView.postsBoundsChangedNotifications = true
+        context.coordinator.attach(to: scroll)
+        return scroll
+    }
+
+    func updateNSView(_ nsView: NSScrollView, context: Context) {
+        context.coordinator.up = $canScrollUp
+        context.coordinator.down = $canScrollDown
+        context.coordinator.update()
+    }
+
+    final class Coordinator: NSObject {
+        var up: Binding<Bool>
+        var down: Binding<Bool>
+        weak var scroll: NSScrollView?
+        private var observer: NSObjectProtocol?
+
+        init(up: Binding<Bool>, down: Binding<Bool>) {
+            self.up = up
+            self.down = down
+        }
+
+        func attach(to scroll: NSScrollView) {
+            self.scroll = scroll
+            observer = NotificationCenter.default.addObserver(
+                forName: NSView.boundsDidChangeNotification,
+                object: scroll.contentView, queue: .main
+            ) { [weak self] _ in self?.update() }
+            DispatchQueue.main.async { self.update() }
+        }
+
+        func update() {
+            guard let scroll else { return }
+            let docHeight = scroll.documentView?.frame.height ?? 0
+            let viewHeight = scroll.contentSize.height
+            let y = scroll.contentView.bounds.origin.y
+            let maxY = max(0, docHeight - viewHeight)
+            DispatchQueue.main.async {
+                self.up.wrappedValue = maxY > 1 && y > 1
+                self.down.wrappedValue = maxY > 1 && y < maxY - 1
+            }
+        }
+
+        deinit {
+            if let observer { NotificationCenter.default.removeObserver(observer) }
+        }
     }
 }
 
@@ -224,7 +347,8 @@ private final class DropdownPresenter {
         }
     }
 
-    func present(anchorView: NSView?, content: AnyView, contentWidth: CGFloat, onClose: @escaping () -> Void) {
+    func present(anchorView: NSView?, content: AnyView, contentWidth: CGFloat,
+                 panelHeight: CGFloat? = nil, onClose: @escaping () -> Void) {
         close()
         self.onClose = onClose
 
@@ -232,7 +356,7 @@ private final class DropdownPresenter {
         let localizedContent = AnyView(content.withAppLocale())
         let controller = NSHostingController(rootView: localizedContent)
         let measured = controller.sizeThatFits(in: NSSize(width: pw, height: .greatestFiniteMagnitude))
-        let ph = max(measured.height, 8)
+        let ph = max(panelHeight ?? measured.height, 8)
         controller.view.frame = NSRect(x: 0, y: 0, width: pw, height: ph)
         controller.view.wantsLayer = true
         controller.view.layer?.backgroundColor = NSColor.clear.cgColor
@@ -257,7 +381,8 @@ private final class DropdownPresenter {
             let sr = win.convertToScreen(wb)
             let visible = (win.screen ?? NSScreen.main)?.visibleFrame ?? .zero
             var oy = sr.minY - ph - 4
-            if oy < visible.minY { oy = sr.maxY + 4 }
+            if oy < visible.minY { oy = min(sr.maxY + 4, visible.maxY - ph) }
+            oy = max(visible.minY, min(oy, visible.maxY - ph))
             var ox = sr.minX
             if ox + pw > visible.maxX { ox = visible.maxX - pw }
             if ox < visible.minX { ox = visible.minX }
@@ -330,13 +455,17 @@ struct UIDropdownPicker<Value: Hashable>: View {
     var width: CGFloat? = nil
     var fullWidth: Bool = false
     var minWidth: CGFloat = 180
+    /// Максимальная высота выпадающего списка (доля экрана).
+    var maxHeight: CGFloat? = nil
 
-    init(selection: Binding<Value>, options: [UIDropdownOption<Value>], width: CGFloat? = nil, fullWidth: Bool = false, minWidth: CGFloat = 180) {
+    init(selection: Binding<Value>, options: [UIDropdownOption<Value>], width: CGFloat? = nil,
+         fullWidth: Bool = false, minWidth: CGFloat = 180, maxHeight: CGFloat? = nil) {
         self._selection = selection
         self.options = options
         self.width = width
         self.fullWidth = fullWidth
         self.minWidth = minWidth
+        self.maxHeight = maxHeight
     }
 
     @State private var anchorView: NSView?
@@ -395,8 +524,11 @@ struct UIDropdownPicker<Value: Hashable>: View {
             DropdownRow(text: o.text, icon: o.icon, isSelected: o.value == selection,
                         onTap: { selection = o.value; closeAction() }, isDivider: false)
         }
-        let content = AnyView(DropdownList(width: pw, rows: rows))
-        DropdownPresenter.shared.present(anchorView: anchorView, content: content, contentWidth: pw) { [self] in
+        let cap = maxHeight ?? (NSScreen.main?.visibleFrame.height ?? 800) * 0.75
+        let content = AnyView(DropdownList(width: pw, rows: rows, maxHeight: cap))
+        let height = min(DropdownList.contentHeight(rows), cap)
+        DropdownPresenter.shared.present(anchorView: anchorView, content: content,
+                                         contentWidth: pw, panelHeight: height) { [self] in
             isOpen = false
             suppressOpen = true
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.18) { suppressOpen = false }
@@ -404,6 +536,101 @@ struct UIDropdownPicker<Value: Hashable>: View {
     }
 
     private func closeAction() { DropdownPresenter.shared.close() }
+}
+
+/// Поле названия модели, выпадающий список и кнопка загрузки — в одной строке.
+/// Ширина списка равна ширине поля, поэтому длинные имена не обрезаются.
+struct ModelFieldPicker: View {
+    @Binding var model: String
+    @Binding var models: [String]
+    let onLoad: () -> Void
+    @Binding var isLoading: Bool
+    /// Список занимает 40% ширины поля, а не всю её — длинные имена всё равно влезают.
+    var dropdownWidthRatio: CGFloat = 0.4
+    var minWidth: CGFloat = 320
+
+    @State private var anchorView: NSView?
+    @State private var isOpen = false
+    @State private var suppressOpen = false
+    /// Список пуст — после загрузки открываем его сами, без второго нажатия.
+    @State private var pendingOpen = false
+
+    var body: some View {
+        HStack(spacing: 6) {
+            TextField("", text: $model)
+                .textFieldStyle(PlainTextFieldStyle())
+                .font(UIStyleFont.body(size: 13, weight: .regular))
+                .foregroundColor(.uiInk)
+            Divider().frame(height: 18)
+            Button { openMenu() } label: {
+                Image(systemName: "chevron.down")
+                    .font(.system(size: 9, weight: .bold))
+                    .foregroundColor(.uiMidGray)
+            }
+            .buttonStyle(TactileButtonStyle())
+            .help(LocalizedStringKey("Выбрать модель из списка"))
+            Divider().frame(height: 18)
+            Button(action: onLoad) {
+                if isLoading {
+                    ProgressView().controlSize(.small).frame(width: 16, height: 16)
+                } else {
+                    Image(systemName: "arrow.clockwise")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundColor(.uiInk)
+                }
+            }
+            .buttonStyle(TactileButtonStyle())
+            .help(LocalizedStringKey("Обновить список моделей"))
+        }
+        .padding(.vertical, 8)
+        .padding(.horizontal, 12)
+        .background(Color.uiCanvas)
+        .cornerRadius(8)
+        .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.uiHairline, lineWidth: 1))
+        .background(AnchorRepresentable(view: $anchorView))
+        .frame(minWidth: minWidth, maxWidth: .infinity)
+        .onChange(of: isLoading) { loading in
+            guard !loading, pendingOpen else { return }
+            pendingOpen = false
+            // При ошибке загрузки список останется пустым — ошибка уже показана под полем.
+            if !models.isEmpty { presentMenu() }
+        }
+    }
+
+    private func openMenu() {
+        guard !suppressOpen else { suppressOpen = false; return }
+        guard anchorView != nil else { return }
+        if models.isEmpty {
+            pendingOpen = true
+            if !isLoading {
+                onLoad()
+                // Загрузка не стартовала (например, пустой Base URL) — не ждём её вечно.
+                if !isLoading { pendingOpen = false }
+            }
+            return
+        }
+        presentMenu()
+    }
+
+    private func presentMenu() {
+        guard let anchorView else { return }
+        isOpen = true
+        let pw = max(minWidth, anchorView.bounds.width * dropdownWidthRatio)
+        let rows = models.map { name in
+            DropdownRow(text: Text(name), icon: nil, isSelected: name == model,
+                        onTap: { model = name; closeMenu() }, isDivider: false)
+        }
+        let cap = (NSScreen.main?.visibleFrame.height ?? 800) * 0.75
+        let content = AnyView(DropdownList(width: pw, rows: rows, maxHeight: cap))
+        DropdownPresenter.shared.present(anchorView: anchorView, content: content,
+                                         contentWidth: pw, panelHeight: min(DropdownList.contentHeight(rows), cap)) { [self] in
+            isOpen = false
+            suppressOpen = true
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.18) { suppressOpen = false }
+        }
+    }
+
+    private func closeMenu() { DropdownPresenter.shared.close() }
 }
 
 // MARK: - Дропдаун-меню действий (замена Menu)

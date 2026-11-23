@@ -244,8 +244,26 @@ struct SuccessCheckView: View {
     }
 }
 
+private struct FailoverBadge: View {
+    var body: some View {
+        HStack(spacing: 3) {
+            Image(systemName: "arrow.triangle.branch")
+                .font(.system(size: 9, weight: .bold))
+            Text(LocalizedStringKey("Резерв"))
+                .font(UIStyleFont.body(size: 9, weight: .semibold))
+        }
+        .foregroundColor(Color(hex: "#FBBF24"))
+        .padding(.horizontal, 6)
+        .padding(.vertical, 3)
+        .background(Color(hex: "#FBBF24").opacity(0.14))
+        .cornerRadius(8)
+        .help(LocalizedStringKey("Используется резервный провайдер"))
+    }
+}
+
 struct FloatingWidgetView: View {
     @ObservedObject var audioCapture = AudioCapture.shared
+    @ObservedObject var aiProviders = AIProviderStore.shared
     @ObservedObject var language = LanguageSettings.shared
     @Environment(\.colorScheme) private var colorScheme
     @State private var isAppeared = false
@@ -293,6 +311,7 @@ struct FloatingWidgetView: View {
                             .font(UIStyleFont.body(size: 12, weight: .semibold))
                             .foregroundColor(.white)
                             .lineLimit(1)
+                        if aiProviders.isUsingFailover { FailoverBadge() }
                     }
                     .contentShape(Rectangle())
                     .help(LocalizedStringKey("Нажмите, чтобы отменить генерацию"))
@@ -316,6 +335,7 @@ struct FloatingWidgetView: View {
                                 .foregroundColor(.white.opacity(0.92))
                                 .lineLimit(1)
                         }
+                        if aiProviders.isUsingFailover { FailoverBadge() }
                     }
                 } else if audioCapture.pipelinePhase == .aiTransforming {
                     HStack(spacing: 8) {
@@ -326,6 +346,7 @@ struct FloatingWidgetView: View {
                             .font(UIStyleFont.body(size: 11, weight: .semibold))
                             .foregroundColor(.white)
                             .lineLimit(1)
+                        if aiProviders.isUsingFailover { FailoverBadge() }
                     }
                 } else if audioCapture.isSuccessDone {
                     SuccessCheckView()
@@ -391,19 +412,20 @@ struct FloatingWidgetView: View {
         .onDisappear {
             isAppeared = false
         }
-        .frame(width: 240, height: 60)
+        .frame(width: max(240, getWidth() + 24), height: 60)
         .environment(\.locale, language.locale)
     }
     
     private func getWidth() -> CGFloat {
+        let failover: CGFloat = aiProviders.isUsingFailover ? 64 : 0
         if audioCapture.warningMessage != nil { return 210 }
         if audioCapture.aiStatusText != nil {
-            return audioCapture.isHoveringAICancel ? 150 : 175
+            return (audioCapture.isHoveringAICancel ? 150 : 175) + failover
         }
         if audioCapture.isProcessingFile { return 110 }
-        if audioCapture.pipelinePhase == .aiTransforming { return 210 }
+        if audioCapture.pipelinePhase == .aiTransforming { return 210 + failover }
         if audioCapture.pipelinePhase == .transcribing || audioCapture.pipelinePhase == .retranscribing {
-            return audioCapture.autoAIProcessEnabled ? 215 : 130
+            return (audioCapture.autoAIProcessEnabled ? 215 : 130) + failover
         }
         if audioCapture.isRecording { return 200 }
         if audioCapture.isSuccessDone { return 150 }

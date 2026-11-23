@@ -271,7 +271,21 @@ struct AIProviderSection: View {
         if preset.id == "ollama" {
             ollamaModelField
         } else {
-            AIInputField(title: "Модель", text: $store.model, placeholder: "gpt-4o-mini")
+            VStack(alignment: .leading, spacing: 4) {
+                Text(LocalizedStringKey("Модель"))
+                    .font(UIStyleFont.body(size: 11, weight: .medium))
+                    .foregroundColor(.uiMidGray)
+                ModelFieldPicker(model: $store.model,
+                                 models: $store.remoteModels,
+                                 onLoad: { store.fetchRemoteModels() },
+                                 isLoading: $store.isLoadingRemoteModels)
+                if let error = store.modelsLoadError {
+                    Text(error.localized)
+                        .font(UIStyleFont.body(size: 11, weight: .regular))
+                        .foregroundColor(.uiEmber)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
         }
 
         AIInputField(title: "Максимум токенов", text: $store.maxTokensString, placeholder: "4096")
@@ -313,13 +327,19 @@ struct AIProviderSection: View {
 
             if store.isTesting {
                 ProgressView().controlSize(.small)
+                if !store.testPhase.statusKey.isEmpty {
+                    Text(LocalizedStringKey(store.testPhase.statusKey))
+                        .font(UIStyleFont.body(size: 11, weight: .regular))
+                        .foregroundColor(.uiMidGray)
+                }
             }
 
             if let result = store.testResult {
                 Text(result)
                     .font(UIStyleFont.body(size: 12, weight: .medium))
                     .foregroundColor(store.testOK ? Color(hex: "#10B981") : .uiEmber)
-                    .lineLimit(2)
+                    .lineLimit(3)
+                    .fixedSize(horizontal: false, vertical: true)
             }
             Spacer()
         }
