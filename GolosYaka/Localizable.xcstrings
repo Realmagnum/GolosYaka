@@ -7302,6 +7302,38 @@
           }
         }
       }
+    },
+    "Обработано %lld из %lld · удалено пустых %lld · сохранено %.0f МБ": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Processed %lld of %lld · empty removed %lld · saved %.0f MB"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Обработано %lld из %lld · удалено пустых %lld · сохранено %.0f МБ"
+          }
+        }
+      }
+    },
+    "Готово: %lld файлов, пустых удалено %lld, ошибок %lld, сохранено %.0f МБ": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Done: %lld files, %lld empty removed, %lld errors, saved %.0f MB"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Готово: %lld файлов, пустых удалено %lld, ошибок %lld, сохранено %.0f МБ"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

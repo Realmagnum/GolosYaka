@@ -305,6 +305,30 @@ do {
     r.expect(AudioStorage.audioID(from: URL(fileURLWithPath: "/tmp/not-a-uuid.wav")) == nil, "Некорректное имя файла не ломает миграцию")
     r.expectEqual(AudioStorage.compressedExtension, "m4a", "Сжатое хранилище — m4a")
     r.expectEqual(AudioStorage.aacBitrate, 24_000, "AAC 24 кбит/с")
+
+    func appendLE(_ data: inout Data, _ value: Int, _ count: Int) {
+        for i in 0..<count { data.append(UInt8((value >> (8 * i)) & 0xff)) }
+    }
+    func fakeWAV(dataSize: Int) -> Data {
+        var d = Data()
+        d.append(contentsOf: Array("RIFF".utf8)); appendLE(&d, 36 + dataSize, 4)
+        d.append(contentsOf: Array("WAVE".utf8))
+        d.append(contentsOf: Array("fmt ".utf8)); appendLE(&d, 16, 4)
+        d.append(contentsOf: [1, 0, 1, 0]); appendLE(&d, 16_000, 4); appendLE(&d, 32_000, 4)
+        d.append(contentsOf: [2, 0, 16, 0])
+        d.append(contentsOf: Array("data".utf8)); appendLE(&d, dataSize, 4)
+        if dataSize > 0 { d.append(contentsOf: [UInt8](repeating: 0, count: min(dataSize, 16))) }
+        return d
+    }
+
+    r.expectEqual(AudioStorage.validate(fakeWAV(dataSize: 100), extension: "wav", totalBytes: 144), .valid,
+                  "WAV с данными валиден")
+    r.expectEqual(AudioStorage.validate(fakeWAV(dataSize: 0), extension: "wav", totalBytes: 44), .empty,
+                  "WAV с нулевой data-частью распознаётся как пустой")
+    r.expectEqual(AudioStorage.validate(Data([1, 2, 3]), extension: "wav", totalBytes: 3), .unreadable,
+                  "Битый заголовок — не пустой, а нечитаемый файл")
+    r.expectEqual(AudioStorage.validate(Data([1, 2, 3]), extension: "m4a", totalBytes: 2000), .valid,
+                  "Для m4a валидация по заголовку не применяется")
 }
 
 exit(runner.report())

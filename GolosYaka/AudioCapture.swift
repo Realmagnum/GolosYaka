@@ -859,6 +859,11 @@ class AudioCapture: NSObject, ObservableObject, AVAudioRecorderDelegate {
     private func saveAudioForNote(id: UUID, sourceURL: URL) {
         let fm = FileManager.default
         guard let audioDir = AppPaths.audioDirectory else { return }
+        // Не создаём пустые заглушки: текст заметки сохраняется и без аудио.
+        guard AudioStorage.validation(of: sourceURL) == .valid else {
+            AppLogger.shared.warn("Storage", "Аудио не сохранено: источник пуст или повреждён", details: id.uuidString)
+            return
+        }
         let compressedURL = audioDir.appendingPathComponent("\(id.uuidString).\(AudioStorage.compressedExtension)")
         let legacyURL = audioDir.appendingPathComponent("\(id.uuidString).\(AudioStorage.legacyExtension)")
 

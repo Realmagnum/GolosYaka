@@ -12,6 +12,8 @@ final class AudioStorageMigrator: ObservableObject {
     @Published private(set) var total = 0
     @Published private(set) var savedBytes: Int64 = 0
     @Published private(set) var failed = 0
+    /// WAV с нулевой data-частью: удалены как пустые заглушки, не ошибка.
+    @Published private(set) var emptyRemoved = 0
     @Published private(set) var summary = ""
 
     private let queue = DispatchQueue(label: "GolosYaka.AudioStorageMigrator", qos: .utility)
@@ -28,6 +30,7 @@ final class AudioStorageMigrator: ObservableObject {
         processed = 0
         savedBytes = 0
         failed = 0
+        emptyRemoved = 0
         isRunning = true
         AppLogger.shared.info("Storage", "Миграция аудио начата", details: "файлов: \(files.count), AAC \(AudioStorage.aacBitrate / 1000) кбит/с")
 
@@ -39,7 +42,7 @@ final class AudioStorageMigrator: ObservableObject {
             }
             DispatchQueue.main.async {
                 self.isRunning = false
-                let message = "обработано: \(self.processed), ошибок: \(self.failed), сохранено: \(self.savedBytes / 1_048_576) МБ"
+                let message = "обработано: \(self.processed), пустых удалено: \(self.emptyRemoved), ошибок: \(self.failed), сохранено: \(self.savedBytes / 1_048_576) МБ"
                 self.summary = message
                 AppLogger.shared.info("Storage", "Миграция аудио завершена", details: message)
             }
@@ -54,11 +57,28 @@ final class AudioStorageMigrator: ObservableObject {
         // Не трогаем запись, которая сейчас играет.
         if let id = AudioStorage.audioID(from: wav), AudioCapture.shared.playingItemId == id { return }
 
+        let before = (try? wav.resourceValues(forKeys: [.fileSizeKey]))?.fileSize ?? 0
+        switch AudioStorage.validation(of: wav) {
+        case .empty:
+            // Пустая заглушка: звука в ней нет, текст и тайминги живут в заметке.
+            try? fm.removeItem(at: wav)
+            DispatchQueue.main.async {
+                self.emptyRemoved += 1
+                self.savedBytes += Int64(before)
+            }
+            AppLogger.shared.info("Storage", "Миграция: удалён пустой WAV без аудиоданных", details: wav.lastPathComponent)
+            return
+        case .unreadable:
+            noteFailure("повреждённый WAV (не разбирается заголовок): \(wav.lastPathComponent)")
+            return
+        case .valid:
+            break
+        }
+
         guard let originalDuration = AudioStorage.duration(of: wav) else {
             noteFailure("не удалось прочитать длительность \(wav.lastPathComponent)")
             return
         }
-        let before = (try? wav.resourceValues(forKeys: [.fileSizeKey]))?.fileSize ?? 0
         guard AudioStorage.encodeAAC24(from: wav, to: compressed),
               let newDuration = AudioStorage.duration(of: compressed),
               abs(newDuration - originalDuration) < 0.5 else {

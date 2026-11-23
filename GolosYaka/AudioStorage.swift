@@ -8,10 +8,55 @@ import AVFoundation
 /// Старые `.wav` продолжают работать через фолбэк; для повторного распознавания
 /// сжатый файл на лету декодируется в PCM WAV через бандл-ffmpeg (для воспроизведения
 /// конвертация не нужна — AVAudioPlayer читает m4a напрямую).
+enum AudioFileValidation: Equatable {
+    case valid
+    /// WAV с нулевой data-частью: звука нет, но текст и тайминги заметки целы.
+    case empty
+    /// Структура файла повреждена или Core Audio не может его прочитать.
+    case unreadable
+}
+
 enum AudioStorage {
     static let compressedExtension = "m4a"
     static let legacyExtension = "wav"
     static let aacBitrate = 24_000
+
+    /// Проверяет файл, не загружая его целиком: читается только заголовок.
+    static func validation(of url: URL) -> AudioFileValidation {
+        guard let handle = try? FileHandle(forReadingFrom: url) else { return .unreadable }
+        defer { try? handle.close() }
+        let header = (try? handle.read(upToCount: 4096)) ?? Data()
+        let totalBytes = (try? url.resourceValues(forKeys: [.fileSizeKey]))?.fileSize ?? 0
+        return validate(header, extension: url.pathExtension.lowercased(), totalBytes: totalBytes)
+    }
+
+    /// Чистая функция разбора RIFF/WAVE — проверяется в тестах без диска.
+    static func validate(_ data: Data, extension ext: String, totalBytes: Int) -> AudioFileValidation {
+        guard ext == legacyExtension else {
+            return totalBytes > 1024 ? .valid : .unreadable
+        }
+        let bytes = [UInt8](data)
+        guard bytes.count >= 12,
+              Array(bytes[0..<4]) == Array("RIFF".utf8),
+              Array(bytes[8..<12]) == Array("WAVE".utf8) else { return .unreadable }
+
+        var pos = 12
+        while pos + 8 <= bytes.count {
+            let id = Array(bytes[pos..<pos+4])
+            let chunkSize = Int(bytes[pos+4])
+                | (Int(bytes[pos+5]) << 8)
+                | (Int(bytes[pos+6]) << 16)
+                | (Int(bytes[pos+7]) << 24)
+            if id == Array("data".utf8) {
+                if chunkSize <= 0 || totalBytes <= pos + 8 { return .empty }
+                return .valid
+            }
+            let step = 8 + chunkSize + (chunkSize & 1)
+            if step <= 0 { return .unreadable }
+            pos += step
+        }
+        return .unreadable
+    }
 
     /// Возвращает реально существующий файл записи, а при отсутствии обоих —
     /// legacy-путь (чтобы проверки `fileExists` у вызывающих работали как раньше).

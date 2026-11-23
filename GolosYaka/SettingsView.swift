@@ -453,15 +453,17 @@ struct SettingsView: View {
                         if audioStorage.isRunning {
                             ProgressView(value: Double(audioStorage.processed),
                                          total: Double(max(1, audioStorage.total)))
-                            Text(L10n.format("Обработано %lld из %lld · сохранено %.0f МБ",
+                            Text(L10n.format("Обработано %lld из %lld · удалено пустых %lld · сохранено %.0f МБ",
                                              Int64(audioStorage.processed),
                                              Int64(audioStorage.total),
+                                             Int64(audioStorage.emptyRemoved),
                                              Double(audioStorage.savedBytes) / 1_048_576))
                                 .font(UIStyleFont.body(size: 11, weight: .regular))
                                 .foregroundColor(.uiMidGray)
                         } else if audioStorage.total > 0 {
-                            Text(L10n.format("Готово: %lld файлов, ошибок %lld, сохранено %.0f МБ",
+                            Text(L10n.format("Готово: %lld файлов, пустых удалено %lld, ошибок %lld, сохранено %.0f МБ",
                                              Int64(audioStorage.processed),
+                                             Int64(audioStorage.emptyRemoved),
                                              Int64(audioStorage.failed),
                                              Double(audioStorage.savedBytes) / 1_048_576))
                                 .font(UIStyleFont.body(size: 11, weight: .regular))
