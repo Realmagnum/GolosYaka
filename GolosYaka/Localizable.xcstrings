@@ -7286,6 +7286,22 @@
           }
         }
       }
+    },
+    "Время ответа модели: %.1f с": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Model response time: %.1f s"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Время ответа модели: %.1f с"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

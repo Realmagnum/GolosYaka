@@ -319,29 +319,36 @@ struct AIProviderSection: View {
                 .foregroundColor(.uiMidGray)
         }
 
-        HStack(spacing: 10) {
-            UIOutlineButton(title: "Проверить") {
-                store.testConnection()
-            }
-            .disabled(store.isTesting)
-
-            if store.isTesting {
-                ProgressView().controlSize(.small)
-                if !store.testPhase.statusKey.isEmpty {
-                    Text(LocalizedStringKey(store.testPhase.statusKey))
-                        .font(UIStyleFont.body(size: 11, weight: .regular))
-                        .foregroundColor(.uiMidGray)
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 10) {
+                UIOutlineButton(title: "Проверить") {
+                    store.testConnection()
                 }
-            }
+                .disabled(store.isTesting)
 
-            if let result = store.testResult {
-                Text(result)
-                    .font(UIStyleFont.body(size: 12, weight: .medium))
-                    .foregroundColor(store.testOK ? Color(hex: "#10B981") : .uiEmber)
-                    .lineLimit(3)
-                    .fixedSize(horizontal: false, vertical: true)
+                if store.isTesting {
+                    ProgressView().controlSize(.small)
+                    if !store.testPhase.statusKey.isEmpty {
+                        Text(LocalizedStringKey(store.testPhase.statusKey))
+                            .font(UIStyleFont.body(size: 11, weight: .regular))
+                            .foregroundColor(.uiMidGray)
+                    }
+                }
+
+                if let result = store.testResult {
+                    Text(result)
+                        .font(UIStyleFont.body(size: 12, weight: .medium))
+                        .foregroundColor(store.testOK ? Color(hex: "#10B981") : .uiEmber)
+                        .lineLimit(3)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                Spacer()
             }
-            Spacer()
+            if let ms = store.lastModelResponseMs {
+                Text(L10n.format("Время ответа модели: %.1f с", Double(ms) / 1000))
+                    .font(UIStyleFont.body(size: 11, weight: .regular))
+                    .foregroundColor(.uiMidGray)
+            }
         }
     }
 

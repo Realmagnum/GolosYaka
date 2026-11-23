@@ -1923,7 +1923,15 @@ struct SidebarTabButton: View {
     
     var body: some View {
         Button(action: action) {
-            HStack(spacing: 10) { Image(systemName: icon).font(.system(size: 13)); Text(title).font(UIStyleFont.body(size: 13, weight: .medium)); Spacer() }
+            HStack(spacing: 10) {
+                Image(systemName: icon)
+                    .font(.system(size: 14, weight: .medium))
+                    .frame(width: 20, height: 20, alignment: .center)
+                Text(title)
+                    .font(UIStyleFont.body(size: 13, weight: .medium))
+                Spacer()
+            }
+            .frame(height: 20)
             .foregroundColor(isActive ? .uiPaper : .uiInk).padding(.vertical, 8).padding(.horizontal, 12)
             .background(isActive ? Color.uiInk : Color.clear).cornerRadius(12).contentShape(Rectangle())
         }

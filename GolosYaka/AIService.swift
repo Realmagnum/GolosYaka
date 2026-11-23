@@ -285,6 +285,8 @@ final class AIProviderStore: ObservableObject {
     @Published var testPhase: AIConnectionTestPhase = .idle
     @Published var testResultMessage: LocalizedMessage?
     var testResult: String? { testResultMessage?.localized }
+    /// Время ответа модели на последней проверке (мс), из stage chat-completions.
+    @Published var lastModelResponseMs: Int?
     @Published var testOK = false
     @Published var installedModels: [String] = []
     @Published var isLoadingModels = false
@@ -667,6 +669,7 @@ final class AIProviderStore: ObservableObject {
         isTesting = true
         testPhase = .models
         testResultMessage = nil
+        lastModelResponseMs = nil
         testOK = false
         let checkedConfig = draftConfig
         AIService.shared.checkProvider(using: checkedConfig) { [weak self] result in
@@ -676,6 +679,7 @@ final class AIProviderStore: ObservableObject {
                 self.testPhase = .finished
                 switch result {
                 case .success(let check):
+                    self.lastModelResponseMs = check.chatStage?.elapsedMs
                     if let models = check.modelsStage, models.ok {
                         self.remoteModels = Self.sortedModels(models.modelIDs)
                     }
