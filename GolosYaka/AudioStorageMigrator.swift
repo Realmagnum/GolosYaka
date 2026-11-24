@@ -15,14 +15,47 @@ final class AudioStorageMigrator: ObservableObject {
     /// WAV с нулевой data-частью: удалены как пустые заглушки, не ошибка.
     @Published private(set) var emptyRemoved = 0
     @Published private(set) var summary = ""
+    @Published private(set) var hasLegacyFiles = false
 
     private let queue = DispatchQueue(label: "GolosYaka.AudioStorageMigrator", qos: .utility)
+
+    static func hasUnmigratedWAV(_ wavNames: [String], existingFileNames: Set<String>) -> Bool {
+        wavNames.contains { name in
+            let base = URL(fileURLWithPath: name).deletingPathExtension().lastPathComponent
+            let compressedName = "\(base).\(AudioStorage.compressedExtension)"
+            return !existingFileNames.contains(compressedName)
+        }
+    }
+
+    private init() {
+        refreshLegacyFilePresence()
+    }
+
+    /// Проверяет, остались ли WAV без соответствующего AAC-файла.
+    /// Отправка и обход файловой системы выполняются на utility queue.
+    func refreshLegacyFilePresence() {
+        queue.async { [weak self] in
+            guard let self else { return }
+            let directory = AppPaths.audioDirectory
+            let files = directory.flatMap {
+                try? FileManager.default.contentsOfDirectory(at: $0, includingPropertiesForKeys: nil)
+            } ?? []
+            let wavNames = files.filter { $0.pathExtension.lowercased() == AudioStorage.legacyExtension }.map(\.lastPathComponent)
+            let existingNames = Set(files.map(\.lastPathComponent))
+            let hasUnmigrated = Self.hasUnmigratedWAV(wavNames, existingFileNames: existingNames)
+            DispatchQueue.main.async { self.hasLegacyFiles = hasUnmigrated }
+        }
+    }
 
     func start() {
         guard !isRunning, let directory = AppPaths.audioDirectory else { return }
         let files = (try? FileManager.default.contentsOfDirectory(
             at: directory, includingPropertiesForKeys: [.fileSizeKey]
-        ))?.filter { $0.pathExtension.lowercased() == AudioStorage.legacyExtension } ?? []
+        ))?.filter {
+            guard $0.pathExtension.lowercased() == AudioStorage.legacyExtension else { return false }
+            let aac = $0.deletingPathExtension().appendingPathExtension(AudioStorage.compressedExtension)
+            return !FileManager.default.fileExists(atPath: aac.path)
+        } ?? []
         guard !files.isEmpty else { return }
 
         summary = ""
@@ -44,6 +77,7 @@ final class AudioStorageMigrator: ObservableObject {
                 self.isRunning = false
                 let message = "обработано: \(self.processed), пустых удалено: \(self.emptyRemoved), ошибок: \(self.failed), сохранено: \(self.savedBytes / 1_048_576) МБ"
                 self.summary = message
+                self.refreshLegacyFilePresence()
                 AppLogger.shared.info("Storage", "Миграция аудио завершена", details: message)
             }
         }

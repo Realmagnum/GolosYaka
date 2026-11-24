@@ -55,6 +55,13 @@ do {
     r.expectEqual(AIProviderStore.cachedModels(for: "provider-c", in: cache), [], "Для нового провайдера список пуст")
 }
 
+// Показываем миграцию только если в архиве остался WAV без AAC-пары.
+do {
+    r.expect(AudioStorageMigrator.hasUnmigratedWAV(["note.wav"], existingFileNames: ["note.wav"]), "Несжатый WAV требует миграции")
+    r.expect(!AudioStorageMigrator.hasUnmigratedWAV(["note.wav"], existingFileNames: ["note.wav", "note.m4a"]), "WAV с AAC-парой не требует миграции")
+    r.expect(!AudioStorageMigrator.hasUnmigratedWAV([], existingFileNames: []), "Новый архив без WAV не показывает миграцию")
+}
+
 func timedWords(_ texts: [String]) -> [TimedWord] {
     texts.enumerated().map { TimedWord(text: $0.element, start: Double($0.offset), end: Double($0.offset) + 1) }
 }

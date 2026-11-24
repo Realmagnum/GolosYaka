@@ -7239,18 +7239,18 @@
         }
       }
     },
-    "AAC 24 кбит/с: примерно в 9 раз меньше места. Оригиналы удаляются только после проверки длительности.": {
+    "Миграция записей из ранних версий приложения, которые сохраняли аудио в WAV. AAC занимает примерно в 9 раз меньше места; WAV удаляется только после проверки длительности.": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "AAC 24 kbps: about 9x less space. Originals are removed only after duration verification."
+            "value": "Migrate recordings from earlier app versions that stored audio as WAV. AAC uses about 9x less space; WAV files are removed only after duration verification."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "AAC 24 кбит/с: примерно в 9 раз меньше места. Оригиналы удаляются только после проверки длительности."
+            "value": "Миграция записей из ранних версий приложения, которые сохраняли аудио в WAV. AAC занимает примерно в 9 раз меньше места; WAV удаляется только после проверки длительности."
           }
         }
       }
