@@ -3620,6 +3620,22 @@
         }
       }
     },
+    "Загрузка списка моделей…": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Loading models…"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Загрузка списка моделей…"
+          }
+        }
+      }
+    },
     "Ограничивает токены на размышления для reasoning-моделей": {
       "localizations": {
         "en": {

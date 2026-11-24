@@ -569,6 +569,13 @@ struct ModelFieldPicker: View {
             }
             .buttonStyle(TactileButtonStyle())
             .help(LocalizedStringKey("Выбрать модель из списка"))
+            if isLoading {
+                ProgressView().controlSize(.small)
+                Text(LocalizedStringKey("Загрузка списка моделей…"))
+                    .font(UIStyleFont.body(size: 11, weight: .regular))
+                    .foregroundColor(.uiMidGray)
+                    .lineLimit(1)
+            }
             Divider().frame(height: 18)
             Button(action: onLoad) {
                 if isLoading {
@@ -600,7 +607,7 @@ struct ModelFieldPicker: View {
     private func openMenu() {
         guard !suppressOpen else { suppressOpen = false; return }
         guard anchorView != nil else { return }
-        if models.isEmpty {
+        if isLoading || models.isEmpty {
             pendingOpen = true
             if !isLoading {
                 onLoad()

@@ -47,6 +47,14 @@ final class SmokeRunner {
 let runner = SmokeRunner()
 let r = runner
 
+// Модельные списки провайдеров изолированы по ID.
+do {
+    let cache = ["provider-a": ["a-model"], "provider-b": ["b-model"]]
+    r.expectEqual(AIProviderStore.cachedModels(for: "provider-a", in: cache), ["a-model"], "Кэш возвращает список выбранного провайдера")
+    r.expectEqual(AIProviderStore.cachedModels(for: "provider-b", in: cache), ["b-model"], "Смена провайдера не показывает список предыдущего")
+    r.expectEqual(AIProviderStore.cachedModels(for: "provider-c", in: cache), [], "Для нового провайдера список пуст")
+}
+
 func timedWords(_ texts: [String]) -> [TimedWord] {
     texts.enumerated().map { TimedWord(text: $0.element, start: Double($0.offset), end: Double($0.offset) + 1) }
 }

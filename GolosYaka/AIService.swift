@@ -276,6 +276,10 @@ final class AIProviderStore: ObservableObject {
         names.sorted { $0.localizedCaseInsensitiveCompare($1) == .orderedAscending }
     }
 
+    static func cachedModels(for providerID: String, in cache: [String: [String]]) -> [String] {
+        cache[providerID] ?? []
+    }
+
     /// true, пока текущий ИИ-запрос обслуживается резервным провайдером.
     /// Используется плавающим виджетом, чтобы показать это пользователю.
     @Published var isUsingFailover = false
@@ -294,6 +298,9 @@ final class AIProviderStore: ObservableObject {
     @Published var remoteModels: [String] = []
     @Published var isLoadingRemoteModels = false
     @Published var modelsLoadError: LocalizedMessage?
+    private var remoteModelsByProvider: [String: [String]] = [:]
+    private var modelsLoadErrorByProvider: [String: LocalizedMessage] = [:]
+    private var remoteModelsRequestID: UUID?
     @Published var customPresets: [AIProviderPreset] = []
     @Published var customDisplayNames: [String: String] = [:]
 
@@ -371,6 +378,9 @@ final class AIProviderStore: ObservableObject {
         self.baseURL = Self.savedBaseURL(for: inspectedPreset, legacyID: nil)
         self.model = Self.savedModel(for: inspectedPreset, legacyID: nil)
         self.apiKey = Self.savedAPIKey(for: inspectedPreset, legacyID: nil)
+        self.remoteModelsByProvider = Self.defaults.dictionary(forKey: "ai.provider.remoteModels") as? [String: [String]] ?? [:]
+        self.modelsLoadErrorByProvider = [:]
+        self.remoteModels = Self.cachedModels(for: inspectedPreset.id, in: self.remoteModelsByProvider)
         self.allowInsecureHTTP = Self.defaults.object(forKey: "ai.allowInsecureHTTP") as? Bool ?? true
 
         if let rawEffort = Self.defaults.string(forKey: "ai.reasoningEffort"),
@@ -502,8 +512,13 @@ final class AIProviderStore: ObservableObject {
 
     /// Открыть провайдера для просмотра/редактирования, не меняя основной.
     func inspect(_ preset: AIProviderPreset) {
+        // Загрузка, начатая для предыдущего провайдера, не должна владеть UI нового.
+        remoteModelsRequestID = nil
+        isLoadingRemoteModels = false
         inspectedProviderID = preset.id
         loadInspectedSettings()
+        remoteModels = Self.cachedModels(for: preset.id, in: remoteModelsByProvider)
+        modelsLoadError = modelsLoadErrorByProvider[preset.id]
         resetTestState()
         if preset.id == "ollama" {
             refreshModels()
@@ -672,6 +687,7 @@ final class AIProviderStore: ObservableObject {
         lastModelResponseMs = nil
         testOK = false
         let checkedConfig = draftConfig
+        let checkedProviderID = inspectedProviderID
         AIService.shared.checkProvider(using: checkedConfig) { [weak self] result in
             DispatchQueue.main.async {
                 guard let self else { return }
@@ -681,7 +697,12 @@ final class AIProviderStore: ObservableObject {
                 case .success(let check):
                     self.lastModelResponseMs = check.chatStage?.elapsedMs
                     if let models = check.modelsStage, models.ok {
-                        self.remoteModels = Self.sortedModels(models.modelIDs)
+                        let fetchedModels = Self.sortedModels(models.modelIDs)
+                        self.remoteModelsByProvider[checkedProviderID] = fetchedModels
+                        Self.defaults.set(self.remoteModelsByProvider, forKey: "ai.provider.remoteModels")
+                        if self.inspectedProviderID == checkedProviderID {
+                            self.remoteModels = fetchedModels
+                        }
                     }
                     if check.isUsable {
                         self.testOK = true
@@ -719,23 +740,39 @@ final class AIProviderStore: ObservableObject {
         }
         isLoadingRemoteModels = true
         modelsLoadError = nil
+        modelsLoadErrorByProvider.removeValue(forKey: inspectedProviderID)
         let checkedConfig = draftConfig
+        let requestID = UUID()
+        let requestedProviderID = inspectedProviderID
+        remoteModelsRequestID = requestID
         AIService.shared.listModels(using: checkedConfig) { [weak self] result in
             DispatchQueue.main.async {
-                guard let self else { return }
+                guard let self,
+                      self.remoteModelsRequestID == requestID,
+                      self.inspectedProviderID == requestedProviderID else { return }
+                self.remoteModelsRequestID = nil
                 self.isLoadingRemoteModels = false
                 switch result {
                 case .success(let names):
                     self.remoteModels = Self.sortedModels(names)
+                    self.remoteModelsByProvider[requestedProviderID] = self.remoteModels
+                    Self.defaults.set(self.remoteModelsByProvider, forKey: "ai.provider.remoteModels")
                     if names.isEmpty {
-                        self.modelsLoadError = .key("Сервер вернул пустой список моделей")
+                        let error = LocalizedMessage.key("Сервер вернул пустой список моделей")
+                        self.modelsLoadError = error
+                        self.modelsLoadErrorByProvider[requestedProviderID] = error
                         AppLogger.shared.warn("AI", "Список моделей пуст", details: "\(checkedConfig.baseURL) / \(checkedConfig.model)")
                     } else {
+                        self.modelsLoadErrorByProvider.removeValue(forKey: requestedProviderID)
                         AppLogger.shared.info("AI", "Список моделей загружен", details: "\(checkedConfig.baseURL), моделей: \(names.count)")
                     }
                 case .failure(let error):
                     self.remoteModels = []
-                    self.modelsLoadError = .formatted(key: "Не удалось загрузить модели: %@", arg: error.localizedDescription)
+                    self.remoteModelsByProvider[requestedProviderID] = []
+                    Self.defaults.set(self.remoteModelsByProvider, forKey: "ai.provider.remoteModels")
+                    let loadError = LocalizedMessage.formatted(key: "Не удалось загрузить модели: %@", arg: error.localizedDescription)
+                    self.modelsLoadError = loadError
+                    self.modelsLoadErrorByProvider[requestedProviderID] = loadError
                     AppLogger.shared.error("AI", "Загрузка списка моделей не удалась", details: error.localizedDescription)
                 }
             }
